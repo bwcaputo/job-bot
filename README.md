@@ -14,6 +14,17 @@ You are the fishing pole. The bot is what's always in the water.
 - Tracks application lifecycle (submitted, acknowledged, interviewing, rejected, offer) via optional Gmail scanning
 - Refreshes a live dashboard artifact in your Cowork sidebar with KPIs, daily volume trend, location distribution, top JD skills, active pipeline, and applications tracker
 
+## Human in the loop
+
+The bot does not auto-apply. It handles discovery, scoring, and first-draft generation. Everything that requires judgment stays with you:
+
+- Create the ATS / candidate profile on each company portal yourself
+- Move the chat to [Claude in Chrome](https://claude.ai/chrome) when it's time to fill out Workday, Greenhouse, or Lever forms — the dashboard hands off, Claude in Chrome drives the form
+- Review every tailored resume and cover letter before submission. For JDs with unusual asks, open the resume in Word and run another tailoring pass with Claude
+- Hit Submit yourself
+
+The bot surfaces and prepares. You apply.
+
 ## Setup — workshop / classroom path
 
 This repo includes a paste-and-go setup prompt designed for non-technical users.
