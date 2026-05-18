@@ -2,8 +2,6 @@
 
 An automated daily job-search workflow built on Cowork scheduled tasks. Searches user-defined target companies every weekday morning, scores each posting against a master resume on a 100-point rubric, generates tailored cover letters and resumes for the top matches, and updates a persistent dashboard you can open from your Cowork sidebar.
 
-You are the fishing pole. The bot is what's always in the water.
-
 ## What it does
 
 - Searches a list of 20–60 target companies every weekday at 7 AM
