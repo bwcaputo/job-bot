@@ -73,4 +73,4 @@ MIT — see [LICENSE](LICENSE).
 
 ## Credits
 
-Created by [Brian Caputo](https://github.com/) as a workshop project for an MBA cohort, May 2026. Contributions welcome.
+Created by [Brian Caputo](https://github.com/bwcaputo) as a workshop project for an MBA cohort, May 2026. Contributions welcome.

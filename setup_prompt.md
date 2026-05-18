@@ -1158,7 +1158,7 @@ function renderRunHistory() {
   });
   const dates = Object.keys(byDate).sort().reverse(); // most recent first
   if (!dates.length) {
-    wrap.innerHTML = '<p style="color:var(--grey); padding:10px">No runs yet. First run is scheduled for tomorrow at 7:00 AM Denver time.</p>';
+    wrap.innerHTML = '<p style="color:var(--grey); padding:10px">No runs yet. First run is scheduled for tomorrow at 7:00 AM local time.</p>';
     return;
   }
   wrap.innerHTML = dates.slice(0, 30).map(d => {
