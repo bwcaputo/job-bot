@@ -1,0 +1,30 @@
+# Personal data — never commit
+master/resume_master.*
+master/projects.md
+master/cover_letter.docx
+applications/
+briefs/all_jobs.jsonl
+briefs/feedback.json
+briefs/index.json
+config/preferences.md
+dashboard/dashboard.html
+github_repo/
+
+# Per-date job folders
+daily job brief/
+Brian daily job brief/
+
+# Build artifacts
+__pycache__/
+*.pyc
+*.pyo
+.~lock.*
+*.tmp
+/tmp/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp

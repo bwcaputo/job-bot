@@ -1,0 +1,745 @@
+<meta charset="utf-8">
+<style>
+  :root { color-scheme: light; --ink:#111; --paper:#fff; --navy:#1f3a5f; --yellow:#f5c518; --green:#2f8a3c; --red:#c0392b; --grey:#666; --line:#e6e6e6; --bg:#fafafa; }
+  *,*::before,*::after { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color:var(--ink); background:var(--bg); font-size:14px; line-height:1.45; }
+  .wrap { max-width:1200px; margin:0 auto; padding:18px; }
+  header { display:flex; justify-content:space-between; align-items:baseline; padding-bottom:12px; border-bottom:2px solid var(--ink); margin-bottom:18px; }
+  header h1 { margin:0; font-size:22px; letter-spacing:-0.01em; }
+  header .meta { color:var(--grey); font-size:12px; }
+  .kpi-row { display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:18px; }
+  .kpi { background:var(--paper); border:1px solid var(--line); padding:14px 16px; border-radius:6px; }
+  .kpi .label { font-size:11px; text-transform:uppercase; color:var(--grey); letter-spacing:0.04em; }
+  .kpi .value { font-size:30px; font-weight:600; line-height:1.1; margin-top:6px; color:var(--ink); }
+  .kpi .sub { font-size:11px; color:var(--grey); margin-top:4px; }
+  .panel { background:var(--paper); border:1px solid var(--line); border-radius:6px; padding:14px 16px; margin-bottom:14px; }
+  .panel h2 { margin:0 0 10px 0; font-size:14px; text-transform:uppercase; letter-spacing:0.04em; color:var(--navy); }
+  .grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
+  .chart-wrap { position:relative; height:240px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-size:11px; text-transform:uppercase; color:var(--grey); letter-spacing:0.04em; font-weight:600; }
+  td.score { font-weight:600; }
+  .chip { display:inline-block; padding:2px 7px; border-radius:10px; font-size:11px; font-weight:600; }
+  .chip-green { background:#e6f4ea; color:var(--green); }
+  .chip-yellow { background:#fff7d1; color:#8a6d00; }
+  .chip-grey { background:#eee; color:var(--grey); }
+  .chip-navy { background:#e6ecf5; color:var(--navy); }
+  .btn { font:inherit; cursor:pointer; padding:5px 10px; border-radius:4px; border:1px solid var(--ink); background:var(--paper); color:var(--ink); margin-right:4px; font-size:12px; display:inline-block; text-align:center; text-decoration:none; line-height:1.3; }
+  .btn:hover { background:var(--ink); color:var(--paper); text-decoration:none; }
+  a.btn { color:var(--ink); }
+  a.btn:hover { color:var(--paper); }
+  .btn.applied { background:var(--green); color:var(--paper); border-color:var(--green); }
+  .btn.skipped { background:var(--grey); color:var(--paper); border-color:var(--grey); }
+  .btn.saved { background:var(--yellow); color:var(--ink); border-color:var(--yellow); }
+  a.apply-link { color:var(--navy); text-decoration:none; font-weight:600; }
+  a.apply-link:hover { text-decoration:underline; }
+  .empty { text-align:center; padding:32px 20px; color:var(--grey); }
+  .empty h2 { color:var(--navy); margin-bottom:6px; }
+  .empty .rules { background:var(--bg); border:1px dashed var(--line); border-radius:6px; padding:14px; margin-top:18px; text-align:left; max-width:560px; margin-left:auto; margin-right:auto; }
+  .tabs { display:flex; gap:0; border-bottom:1px solid var(--line); margin-bottom:10px; }
+  .tab { padding:8px 14px; cursor:pointer; border-bottom:2px solid transparent; font-size:12px; text-transform:uppercase; letter-spacing:0.04em; color:var(--grey); }
+  .tab.active { color:var(--ink); border-bottom-color:var(--yellow); font-weight:600; }
+  .pulse { display:inline-block; width:8px; height:8px; background:var(--green); border-radius:50%; margin-right:6px; vertical-align:middle; animation:pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.3 } }
+  .footer { text-align:center; color:var(--grey); font-size:11px; padding:18px 0; }
+  .small-link { color:var(--grey); font-size:11px; text-decoration:underline; cursor:pointer; }
+  .truncate { max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .err { background:#fff4f0; border:1px solid #f3c2b3; color:#8a3010; padding:12px 14px; border-radius:6px; margin-bottom:14px; font-size:13px; }
+  /* Today's brief cards */
+  .today-card { display:grid; grid-template-columns: 80px 1fr auto; gap:14px; padding:14px; border:1px solid var(--line); border-radius:6px; margin-bottom:10px; background:#fff; align-items:center; }
+  .today-card.top { border-left:6px solid var(--yellow); }
+  .today-score { font-size:28px; font-weight:700; text-align:center; padding:8px 0; border-radius:6px; }
+  .today-score.green { background:#e6f4ea; color:var(--green); }
+  .today-score.yellow { background:#fff7d1; color:#8a6d00; }
+  .today-meta { color:var(--grey); font-size:12px; margin-top:3px; }
+  .today-why { font-size:13px; color:var(--ink); margin-top:6px; line-height:1.4; }
+  .today-actions { display:flex; flex-direction:column; gap:4px; min-width:140px; }
+  .today-actions .btn { width:100%; text-align:center; }
+  .quiet-day { padding:18px; text-align:center; background:var(--bg); border-radius:6px; color:var(--grey); }
+  .quiet-day strong { color:var(--ink); display:block; margin-bottom:4px; }
+  /* Application Pipeline */
+  .app-metrics { display:grid; grid-template-columns: repeat(6, 1fr); gap:8px; margin-bottom:14px; }
+  .app-metrics .tile { background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:10px 8px; text-align:center; }
+  .app-metrics .tile strong { display:block; font-size:22px; line-height:1.1; }
+  .app-metrics .tile .l { display:block; font-size:10px; text-transform:uppercase; color:var(--grey); letter-spacing:0.04em; margin-top:4px; }
+  .app-metrics .tile.submitted strong { color:var(--ink); }
+  .app-metrics .tile.acknowledged strong { color:#8a6d00; }
+  .app-metrics .tile.in-progress strong { color:var(--green); }
+  .app-metrics .tile.rejected strong { color:var(--red); }
+  .app-metrics .tile.offer strong { color:var(--yellow); background:none; }
+  .app-metrics .tile.rate strong { color:var(--navy); }
+  .status-chip { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; text-transform:capitalize; }
+  .status-chip.submitted { background:#e6ecf5; color:var(--navy); }
+  .status-chip.acknowledged { background:#fff7d1; color:#8a6d00; }
+  .status-chip.interviewing { background:#e6f4ea; color:var(--green); }
+  .status-chip.rejected { background:#fdecec; color:var(--red); }
+  .status-chip.offer { background:#fff7d1; color:#8a6d00; border:1px solid var(--yellow); }
+  .status-chip.withdrew { background:#eee; color:var(--grey); }
+  details.app-row { border:1px solid var(--line); border-radius:6px; margin-bottom:6px; background:var(--paper); }
+  details.app-row[open] { border-color:var(--navy); }
+  details.app-row summary { padding:10px 12px; cursor:pointer; display:grid; grid-template-columns: 90px 1fr 60px 110px 1fr; gap:12px; align-items:center; list-style:none; font-size:13px; }
+  details.app-row summary::-webkit-details-marker { display:none; }
+  details.app-row summary:hover { background:var(--bg); }
+  .app-history { padding:10px 14px 14px 14px; border-top:1px solid var(--line); font-size:12px; color:var(--grey); }
+  .app-history-row { display:grid; grid-template-columns: 110px 110px 1fr; gap:10px; padding:4px 0; }
+  .app-history-row.notes { color:var(--ink); padding-top:8px; border-top:1px dashed var(--line); margin-top:6px; }
+  /* Today's counts strip */
+  .today-counts { display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:14px; padding:12px 14px; background:var(--bg); border:1px solid var(--line); border-radius:6px; }
+  .today-counts .tc { text-align:center; }
+  .today-counts .tc .n { font-size:24px; font-weight:700; color:var(--ink); display:block; line-height:1.1; }
+  .today-counts .tc .lbl { font-size:11px; text-transform:uppercase; color:var(--grey); letter-spacing:0.04em; margin-top:4px; display:block; }
+  .today-counts .tc.disqualified .n { color:var(--grey); }
+  .today-counts .tc.qualified .n { color:var(--green); }
+  .today-counts .tc.applied .n { color:var(--navy); }
+  .today-counts .threshold-note { grid-column: 1 / -1; text-align:center; font-size:11px; color:var(--grey); padding-top:6px; border-top:1px dashed var(--line); margin-top:4px; }
+  /* Run history */
+  .run-row { border:1px solid var(--line); border-radius:6px; margin-bottom:8px; background:var(--paper); overflow:hidden; }
+  .run-row[open] { border-color:var(--navy); }
+  .run-summary { padding:12px 14px; cursor:pointer; display:grid; grid-template-columns: 1fr auto auto auto auto; gap:18px; align-items:center; list-style:none; font-size:13px; }
+  .run-summary::-webkit-details-marker { display:none; }
+  .run-summary:hover { background:var(--bg); }
+  .run-date { font-weight:600; color:var(--ink); }
+  .run-date .weekday { color:var(--grey); font-weight:400; margin-left:6px; font-size:12px; }
+  .run-stat { color:var(--grey); font-size:11px; text-align:center; min-width:60px; }
+  .run-stat strong { font-size:18px; display:block; line-height:1.1; }
+  .run-stat.scanned strong { color:var(--ink); }
+  .run-stat.disqualified strong { color:var(--grey); }
+  .run-stat.qualified strong { color:var(--green); }
+  .run-stat.applied strong { color:var(--navy); }
+  .run-stat .lbl { display:block; text-transform:uppercase; letter-spacing:0.04em; margin-top:2px; }
+  .run-top { font-size:12px; color:var(--grey); max-width:240px; text-align:right; }
+  .run-top strong { color:var(--ink); }
+  .run-detail { padding:0 14px 14px 14px; border-top:1px solid var(--line); }
+  .run-detail table { margin-top:10px; }
+  .lifetime-line { text-align:center; color:var(--grey); font-size:11px; margin-top:-12px; margin-bottom:18px; padding-bottom:6px; }
+  .lifetime-line strong { color:var(--ink); }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Daily Job Briefing</h1>
+      <div class="meta"><span class="pulse"></span><span id="status-text">Loading…</span></div>
+    </div>
+    <div style="display:flex; align-items:center; gap:14px">
+      <div class="meta">{USER_NAME} · {SEARCH_TAGLINE}</div>
+      <button class="btn" id="refresh-btn" style="margin:0">Refresh data</button>
+    </div>
+  </header>
+
+  <div id="err-state" style="display:none" class="err"></div>
+
+  <div id="empty-state" style="display:none">
+    <div class="empty panel">
+      <h2>No data yet</h2>
+      <p>The first scheduled run hasn't completed. Jobs scored, applied, and skipped will populate here automatically.</p>
+      <div id="next-run"></div>
+      <div class="rules">
+        <strong>Search rules currently in effect:</strong><br>
+        Source: company-direct career sites only (no aggregators)<br>
+        Freshness: postings ≤ 7 days old, date verified or skipped<br>
+        Output: top 3 matches per day, never padded<br>
+        Match floor: score ≥ 75
+      </div>
+    </div>
+  </div>
+
+  <div id="data-state" style="display:none">
+    <div class="panel" id="today-panel">
+      <h2>Today's brief · <span id="today-date"></span></h2>
+      <div id="today-counts" class="today-counts"></div>
+      <div id="today-cards"></div>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi"><div class="label">Jobs scanned (30d)</div><div class="value" id="kpi-scanned">0</div><div class="sub" id="kpi-scanned-sub">—</div></div>
+      <div class="kpi"><div class="label">Qualified ≥75 match (30d)</div><div class="value" id="kpi-qualified">0</div><div class="sub" id="kpi-qualified-sub">—</div></div>
+      <div class="kpi"><div class="label">Applied (30d)</div><div class="value" id="kpi-applied">0</div><div class="sub" id="kpi-applied-sub">—</div></div>
+      <div class="kpi"><div class="label">Apply rate</div><div class="value" id="kpi-rate">—</div><div class="sub">applied / qualified</div></div>
+    </div>
+    <div class="lifetime-line" id="lifetime-line">—</div>
+
+    <div class="panel">
+      <h2>Run history · most recent first</h2>
+      <div id="run-history"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Daily volume — last 30 days</h2>
+      <div class="chart-wrap"><canvas id="chart-volume"></canvas></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <h2>Where the jobs are</h2>
+        <div class="chart-wrap"><canvas id="chart-geo"></canvas></div>
+      </div>
+      <div class="panel">
+        <h2>Top skills mentioned in JDs</h2>
+        <div class="chart-wrap"><canvas id="chart-skills"></canvas></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>My Applications · submitted + recruiter activity</h2>
+      <div class="app-metrics" id="app-metrics"></div>
+      <div class="tabs" id="apps-tabs">
+        <div class="tab active" data-apps-filter="active">In progress</div>
+        <div class="tab" data-apps-filter="lost">Rejected</div>
+        <div class="tab" data-apps-filter="won">Offers</div>
+        <div class="tab" data-apps-filter="all">All</div>
+      </div>
+      <div id="apps-table-wrap"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Active pipeline · qualified, no decision yet</h2>
+      <div id="pipeline-table-wrap"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Activity log</h2>
+      <div class="tabs">
+        <div class="tab active" data-tab="applied">Applied</div>
+        <div class="tab" data-tab="skipped">Skipped</div>
+        <div class="tab" data-tab="saved">Saved for later</div>
+      </div>
+      <div id="log-table-wrap"></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Reads <code>Job Bot/briefs/all_jobs.jsonl</code> + <code>Job Bot/briefs/feedback.json</code>. Edit <code>config/preferences.md</code> to retune.
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
+
+<script>
+const COLORS = { ink:'#111', navy:'#1f3a5f', yellow:'#f5c518', green:'#2f8a3c', red:'#c0392b', grey:'#666', line:'#e6e6e6' };
+const LOCAL_KEY = 'jobbot_feedback_cache_v1';
+const MOUNT_KEY = 'jobbot_mount_path_v1';
+
+let MOUNT = null; // discovered at load — e.g. /sessions/<id>/mnt/Job Bot
+let JOBS = [];
+let APPLICATIONS = [];
+let FEEDBACK = {};
+let CURRENT_TAB = 'applied';
+let APPS_FILTER = 'active';
+
+async function bash(cmd) {
+  return await window.cowork.callMcpTool('mcp__workspace__bash', { command: cmd });
+}
+
+function extractText(out) {
+  if (typeof out === 'string') return out;
+  if (out && out.content && Array.isArray(out.content)) return out.content.map(c => c.text || '').join('');
+  if (out && out.output) return out.output;
+  return '';
+}
+
+function safeJson(text, fallback) { try { return JSON.parse(text); } catch { return fallback; } }
+
+function parseJsonl(text) {
+  if (!text) return [];
+  return text.split('\n').filter(l => l.trim()).map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+}
+
+async function discoverMount() {
+  // Always re-discover the mount in case the session changed since last load
+  const out = extractText(await bash(`ls -d /sessions/*/mnt/Job\\ Bot 2>/dev/null | head -1`)).trim();
+  if (out) {
+    localStorage.setItem(MOUNT_KEY, out);
+    return out;
+  }
+  // Fall back to cached path if live discovery returns nothing
+  const cached = localStorage.getItem(MOUNT_KEY);
+  if (cached) {
+    const exists = extractText(await bash(`test -d "${cached}" && echo OK || echo MISS`)).trim();
+    if (exists === 'OK') return cached;
+  }
+  return null;
+}
+
+function showError(msg) {
+  const el = document.getElementById('err-state');
+  el.style.display = 'block';
+  el.innerHTML = msg;
+}
+
+async function loadData() {
+  document.getElementById('status-text').textContent = 'Loading…';
+  // PRIMARY: read baked-in data from the HTML (works regardless of mount state)
+  const bakedEl = document.getElementById('baked-data');
+  if (bakedEl) {
+    try {
+      const baked = JSON.parse(bakedEl.textContent);
+      JOBS = baked.jobs || [];
+      APPLICATIONS = baked.applications || [];
+      FEEDBACK = baked.feedback || {};
+      // Merge any pending localStorage feedback that hasn't synced
+      const cached = JSON.parse(localStorage.getItem(LOCAL_KEY) || '{}');
+      Object.assign(FEEDBACK, cached);
+      // Try to discover mount in background for Apply/Skip writes; not blocking
+      discoverMount().then(m => { MOUNT = m; });
+      const stamp = baked.generated_at ? new Date(baked.generated_at).toLocaleString() : 'baked-in';
+      document.getElementById('status-text').textContent = `${JOBS.length} jobs in ledger · snapshot ${stamp}`;
+      return true;
+    } catch (e) {
+      console.warn('baked data parse failed, falling back to live read', e);
+    }
+  }
+  // FALLBACK: live read via bash (only works if mount available in this session)
+  MOUNT = await discoverMount();
+  if (!MOUNT) {
+    showError('No baked-in data and Job Bot folder not mounted in this session. Ask Claude to re-bake the dashboard, or open the folder via the Cowork sidebar and reload.');
+    return false;
+  }
+  try {
+    const jobsRaw = extractText(await bash(`cat "${MOUNT}/briefs/all_jobs.jsonl" 2>/dev/null || echo ""`));
+    const fbRaw = extractText(await bash(`cat "${MOUNT}/briefs/feedback.json" 2>/dev/null || echo "{}"`));
+    JOBS = parseJsonl(jobsRaw);
+    FEEDBACK = safeJson(fbRaw, {});
+    const cached = JSON.parse(localStorage.getItem(LOCAL_KEY) || '{}');
+    Object.assign(FEEDBACK, cached);
+    document.getElementById('status-text').textContent = `${JOBS.length} jobs in ledger · live read ${new Date().toLocaleTimeString()}`;
+    return true;
+  } catch (e) {
+    showError('Could not read ledger files: ' + (e.message||e));
+    return false;
+  }
+}
+
+function daysAgo(dateStr) {
+  if (!dateStr) return 999;
+  const d = new Date(dateStr);
+  return Math.floor((Date.now() - d.getTime()) / 86400000);
+}
+function lastNDays(n) { return JOBS.filter(j => daysAgo(j.scored_date) <= n); }
+
+function renderEmpty() {
+  document.getElementById('empty-state').style.display = 'block';
+  document.getElementById('data-state').style.display = 'none';
+  const next = nextWeekday7am();
+  document.getElementById('next-run').innerHTML = `<p style="margin-top:14px"><strong>Next scheduled run:</strong> ${next.toLocaleString()} (in ${humanDelta(next - Date.now())})</p>`;
+}
+
+function nextWeekday7am() {
+  const d = new Date();
+  d.setHours(7, 7, 0, 0);
+  if (d <= new Date()) d.setDate(d.getDate() + 1);
+  while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+  return d;
+}
+
+function humanDelta(ms) {
+  const h = Math.floor(ms / 3600000);
+  if (h < 24) return `${h}h`;
+  return `${Math.floor(h/24)}d ${h%24}h`;
+}
+
+function renderData() {
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('data-state').style.display = 'block';
+
+  const last30 = lastNDays(30);
+  const qualified30 = last30.filter(j => j.outcome === 'qualified');
+  const applied30 = qualified30.filter(j => (FEEDBACK[j.url]||{}).status === 'applied');
+
+  document.getElementById('kpi-scanned').textContent = last30.length;
+  document.getElementById('kpi-scanned-sub').textContent = `${lastNDays(7).length} in last 7 days`;
+  document.getElementById('kpi-qualified').textContent = qualified30.length;
+  document.getElementById('kpi-qualified-sub').textContent = `${Math.round(100*qualified30.length/Math.max(1,last30.length))}% pass rate`;
+  document.getElementById('kpi-applied').textContent = applied30.length;
+  const skip = qualified30.filter(j => (FEEDBACK[j.url]||{}).status === 'skipped').length;
+  const save = qualified30.filter(j => (FEEDBACK[j.url]||{}).status === 'saved').length;
+  document.getElementById('kpi-applied-sub').textContent = `${skip} skipped · ${save} saved`;
+  document.getElementById('kpi-rate').textContent = qualified30.length ? `${Math.round(100*applied30.length/qualified30.length)}%` : '—';
+
+  // Lifetime stats line
+  const allTime = JOBS;
+  const allQualified = allTime.filter(j => j.outcome === 'qualified');
+  const allApplied = allQualified.filter(j => (FEEDBACK[j.url]||{}).status === 'applied');
+  const firstDate = allTime.map(j => j.scored_date||'').filter(Boolean).sort()[0];
+  const dayCount = firstDate ? Math.max(1, Math.floor((Date.now() - new Date(firstDate).getTime()) / 86400000) + 1) : 1;
+  document.getElementById('lifetime-line').innerHTML = `Lifetime · <strong>${allTime.length}</strong> scanned · <strong>${allQualified.length}</strong> qualified · <strong>${allApplied.length}</strong> applied · across ${dayCount} day${dayCount===1?'':'s'}`;
+
+  renderTodayBrief();
+  renderRunHistory();
+  renderVolumeChart();
+  renderGeoChart();
+  renderSkillsChart();
+  renderApplications();
+  renderPipeline();
+  renderLog();
+}
+
+const APP_STATUS_META = {
+  submitted:    { label: 'Submitted',    chip: 'chip-navy',   bucket: 'active' },
+  acknowledged: { label: 'Acknowledged', chip: 'chip-navy',   bucket: 'active' },
+  screening:    { label: 'Screening',    chip: 'chip-yellow', bucket: 'active' },
+  assessment:   { label: 'Assessment',   chip: 'chip-yellow', bucket: 'active' },
+  interview:    { label: 'Interview',    chip: 'chip-yellow', bucket: 'active' },
+  offer:        { label: 'Offer',        chip: 'chip-green',  bucket: 'won'    },
+  accepted:     { label: 'Accepted',     chip: 'chip-green',  bucket: 'won'    },
+  declined:     { label: 'Declined',     chip: 'chip-grey',   bucket: 'lost'   },
+  rejected:     { label: 'Rejected',     chip: 'chip-grey',   bucket: 'lost'   },
+  ghosted:      { label: 'Ghosted',      chip: 'chip-grey',   bucket: 'lost'   },
+};
+
+function renderAppMetrics() {
+  const m = document.getElementById('app-metrics');
+  if (!m) return;
+  if (!APPLICATIONS || !APPLICATIONS.length) {
+    m.innerHTML = '';
+    return;
+  }
+  const buckets = { submitted:0, acknowledged:0, in_progress:0, rejected:0, offer:0 };
+  APPLICATIONS.forEach(a => {
+    const s = a.application_status;
+    if (s === 'submitted') buckets.submitted++;
+    else if (s === 'acknowledged') buckets.acknowledged++;
+    else if (['interviewing','phone-screen','onsite','final-round','reference-check'].includes(s)) buckets.in_progress++;
+    else if (['rejected','ghosted','declined'].includes(s)) buckets.rejected++;
+    else if (['offer','accepted'].includes(s)) buckets.offer++;
+  });
+  const total = APPLICATIONS.length;
+  const responded = APPLICATIONS.filter(a => a.last_email_at && a.last_email_at !== a.applied_at).length;
+  const rate = total ? Math.round(100 * responded / total) + '%' : '—';
+  m.innerHTML = `
+    <div class="tile submitted"><strong>${buckets.submitted}</strong><span class="l">Submitted</span></div>
+    <div class="tile acknowledged"><strong>${buckets.acknowledged}</strong><span class="l">Acknowledged</span></div>
+    <div class="tile in-progress"><strong>${buckets.in_progress}</strong><span class="l">In progress</span></div>
+    <div class="tile rejected"><strong>${buckets.rejected}</strong><span class="l">Rejected</span></div>
+    <div class="tile offer"><strong>${buckets.offer}</strong><span class="l">Offers</span></div>
+    <div class="tile rate"><strong>${rate}</strong><span class="l">Response rate</span></div>
+  `;
+}
+
+function renderApplications() {
+  renderAppMetrics();
+  const wrap = document.getElementById('apps-table-wrap');
+  if (!APPLICATIONS || !APPLICATIONS.length) {
+    wrap.innerHTML = '<div class="empty" style="padding:18px"><em>No applications logged yet. The bot adds rows here when you confirm a submission.</em></div>';
+    return;
+  }
+  // Filter
+  const filtered = APPLICATIONS.filter(a => {
+    const meta = APP_STATUS_META[a.application_status] || { bucket: 'active' };
+    if (APPS_FILTER === 'all') return true;
+    return meta.bucket === APPS_FILTER;
+  });
+  // Sort: most recent activity first (last_email_at if present, else applied_at)
+  filtered.sort((a, b) => {
+    const ta = a.last_email_at || a.applied_at || '';
+    const tb = b.last_email_at || b.applied_at || '';
+    return tb.localeCompare(ta);
+  });
+
+  if (!filtered.length) {
+    wrap.innerHTML = `<div class="empty" style="padding:18px"><em>No applications in "${APPS_FILTER}" bucket.</em></div>`;
+    return;
+  }
+
+  const rows = filtered.map(a => {
+    const meta = APP_STATUS_META[a.application_status] || { label: a.application_status, chip: 'chip-grey' };
+    const days = a.applied_at ? Math.max(0, daysAgo(a.applied_at)) : '—';
+    const dayLabel = days === 0 ? 'today' : (days === 1 ? '1 day ago' : `${days} days ago`);
+    const lastEmail = a.last_email_subject
+      ? `<span class="truncate" title="${escapeHtml(a.last_email_subject)}">${escapeHtml(a.last_email_subject)}</span>` +
+        (a.last_email_at ? `<div class="sub" style="color:var(--grey); font-size:11px">${a.last_email_at}</div>` : '')
+      : '<span class="sub" style="color:var(--grey)">—</span>';
+    const gmailLink = a.last_email_thread_id
+      ? `<a class="small-link" href="https://mail.google.com/mail/u/0/#inbox/${a.last_email_thread_id}" target="_blank">open thread</a>`
+      : '';
+    const materialsLink = a.tailored_files
+      ? `<a class="small-link" href="file:///${a.tailored_files.replace(/\\/g,'/')}" title="${escapeHtml(a.tailored_files)}">materials</a>`
+      : '';
+    const score = (a.score_at_apply ?? '—');
+    return `<tr>
+      <td><strong>${escapeHtml(a.company)}</strong><div class="sub" style="color:var(--grey); font-size:11px">${escapeHtml(a.title || '')}</div></td>
+      <td>${a.applied_at || '—'}<div class="sub" style="color:var(--grey); font-size:11px">${dayLabel}</div></td>
+      <td><span class="chip ${meta.chip}">${meta.label}</span></td>
+      <td>${lastEmail}${gmailLink ? ' · ' + gmailLink : ''}</td>
+      <td class="score">${score}</td>
+      <td>${materialsLink}${a.url ? ' · <a class="small-link" href="' + a.url + '" target="_blank">JD</a>' : ''}</td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `<table>
+    <thead><tr><th>Company / Role</th><th>Applied</th><th>Status</th><th>Last email</th><th>Score</th><th>Links</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
+function renderRunHistory() {
+  const wrap = document.getElementById('run-history');
+  // Group jobs by scored_date
+  const byDate = {};
+  JOBS.forEach(j => {
+    const d = (j.scored_date||'').slice(0,10);
+    if (!d) return;
+    if (!byDate[d]) byDate[d] = [];
+    byDate[d].push(j);
+  });
+  const dates = Object.keys(byDate).sort().reverse(); // most recent first
+  if (!dates.length) {
+    wrap.innerHTML = '<p style="color:var(--grey); padding:10px">No runs yet. First run is scheduled for tomorrow at 7:00 AM Denver time.</p>';
+    return;
+  }
+  wrap.innerHTML = dates.slice(0, 30).map(d => {
+    const jobs = byDate[d];
+    const qualified = jobs.filter(j => j.outcome === 'qualified').sort((a,b)=>(b.score||0)-(a.score||0));
+    const stepping = jobs.filter(j => j.outcome === 'stepping-stone').sort((a,b)=>(b.score||0)-(a.score||0));
+    const surfaced = [...qualified, ...stepping];
+    const applied = jobs.filter(j => (FEEDBACK[j.url]||{}).status === 'applied');
+    const top = qualified[0] || stepping[0];
+    const dateObj = new Date(d + 'T12:00:00');
+    const weekday = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+    const pretty = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const dropFreshness = jobs.filter(j => j.outcome === 'stale').length;
+    const dropFit = jobs.filter(j => ['off-fit','dealbreaker'].includes(j.outcome)).length;
+    const disqualified = jobs.length - qualified.length - stepping.length;
+    return `<details class="run-row">
+      <summary class="run-summary">
+        <div class="run-date">${pretty}<span class="weekday">${weekday}</span></div>
+        <div class="run-stat scanned"><strong>${jobs.length}</strong><span class="lbl">Scanned</span></div>
+        <div class="run-stat disqualified"><strong>${disqualified}</strong><span class="lbl">Disqual.</span></div>
+        <div class="run-stat qualified"><strong>${qualified.length}${stepping.length ? `+${stepping.length}*` : ''}</strong><span class="lbl">Qual ≥75${stepping.length ? ' (+steps)' : ''}</span></div>
+        <div class="run-stat applied"><strong>${applied.length}</strong><span class="lbl">Applied</span></div>
+        <div class="run-top">${top ? `<strong>${esc(top.company)}</strong> · ${top.score}` : '<em>quiet day</em>'}</div>
+      </summary>
+      <div class="run-detail">
+        ${surfaced.length ? `<table>
+          <thead><tr><th>Score</th><th>Company / Role</th><th>Location</th><th>Posted</th><th>Why it fits</th><th>Status</th></tr></thead>
+          <tbody>${surfaced.map(j => {
+            const fb = FEEDBACK[j.url] || {};
+            const chip = (j.score||0) >= 85 ? 'chip chip-green' : 'chip chip-yellow';
+            const stepBadge = j.outcome === 'stepping-stone' ? ' <span class="chip chip-yellow" style="font-size:9px">step</span>' : '';
+            const statusChip = fb.status ? `<span class="chip chip-${fb.status==='applied'?'green':fb.status==='saved'?'yellow':'grey'}">${fb.status}</span>` : '<span class="chip chip-navy">undecided</span>';
+            return `<tr>
+              <td><span class="${chip}">${j.score||'-'}</span>${stepBadge}</td>
+              <td><div><strong>${esc(j.company)}</strong></div><div class="truncate"><a class="apply-link" href="${esc(j.url)}" target="_blank">${esc(j.title||'')}</a></div></td>
+              <td>${esc(j.location||'—')}</td>
+              <td>${esc(j.posted_date||'—')}</td>
+              <td style="max-width:300px">${esc(j.why_fits||'')}</td>
+              <td>${statusChip}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>` : ''}
+        <div style="margin-top:10px; color:var(--grey); font-size:11px">
+          Drops: ${dropFreshness} stale (>7 days) · ${dropFit} off-fit or dealbreaker · ${jobs.length - qualified.length - dropFreshness - dropFit} other
+        </div>
+      </div>
+    </details>`;
+  }).join('');
+}
+
+function renderTodayBrief() {
+  const today = new Date().toISOString().slice(0,10);
+  const dateEl = document.getElementById('today-date');
+  dateEl.textContent = new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+
+  // Find the most recent run date in the ledger
+  const allDates = JOBS.map(j => (j.scored_date||'').slice(0,10)).filter(Boolean).sort();
+  const latestDate = allDates.length ? allDates[allDates.length - 1] : today;
+  const useDate = latestDate;
+  if (useDate !== today) {
+    dateEl.textContent += ` (last run: ${useDate})`;
+  }
+
+  // Compute today's counts across the full ledger for that date
+  const todayAll = JOBS.filter(j => (j.scored_date||'').slice(0,10) === useDate);
+  const todayQualified = todayAll.filter(j => j.outcome === 'qualified');
+  const todaySteppingStone = todayAll.filter(j => j.outcome === 'stepping-stone');
+  const todayDisqualified = todayAll.length - todayQualified.length - todaySteppingStone.length;
+  const todayApplied = todayAll.filter(j => (FEEDBACK[j.url]||{}).status === 'applied').length;
+  // Top 3 qualified + up to 2 stepping-stones below
+  const topQualified = todayQualified.sort((a,b) => (b.score||0) - (a.score||0)).slice(0,3);
+  const topStepping = todaySteppingStone.sort((a,b) => (b.score||0) - (a.score||0)).slice(0,2);
+  const todayJobs = [...topQualified, ...topStepping];
+
+  // Render the counts strip — 4 tiles
+  document.getElementById('today-counts').innerHTML = `
+    <div class="tc"><span class="n">${todayAll.length}</span><span class="lbl">Jobs scanned</span></div>
+    <div class="tc disqualified"><span class="n">${todayDisqualified}</span><span class="lbl">Disqualified</span></div>
+    <div class="tc qualified"><span class="n">${todayQualified.length}</span><span class="lbl">Qualified ≥75</span></div>
+    <div class="tc applied"><span class="n">${todayApplied}</span><span class="lbl">Applied</span></div>
+    <div class="threshold-note">Bot uses a 75-point match floor against your resume; 85+ stars as a strong fit. Disqualified = stale, off-fit, or below score floor. Applied counts only the qualified jobs you've marked Applied.</div>
+  `;
+
+  const cards = document.getElementById('today-cards');
+  if (!todayJobs.length) {
+    cards.innerHTML = `<div class="quiet-day">
+      <strong>Quiet day — 0 qualifying postings</strong>
+      Scanned ${todayAll.length} listings. None passed the source rule (company-direct only), the 7-day freshness floor, and the 75-point match threshold. The bar holds.
+    </div>`;
+    return;
+  }
+
+  cards.innerHTML = todayJobs.map((j, idx) => {
+    const fb = FEEDBACK[j.url] || {};
+    const isStepping = j.outcome === 'stepping-stone';
+    const scoreCls = (j.score||0) >= 85 ? 'green' : 'yellow';
+    const topCls = (idx === 0 && !isStepping) ? ' top' : '';
+    const steppingBadge = isStepping ? '<span class="chip chip-yellow" style="margin-left:6px">Stepping stone</span>' : '';
+    const netOverrideBadge = j.network_override ? '<span class="chip chip-navy" style="margin-left:6px">Network override</span>' : '';
+    const folder = j.tailored_files || '';
+    const slug = (j.company||'').toLowerCase().replace(/[^a-z0-9]+/g,'');
+    const resumeFile = folder ? `${folder}${slug}_resume_tailored.docx` : '';
+    const coverFile = folder ? `${folder}${slug}_cover_letter.docx` : '';
+    const appliedCls = fb.status === 'applied' ? ' applied' : '';
+    const skippedCls = fb.status === 'skipped' ? ' skipped' : '';
+    const savedCls = fb.status === 'saved' ? ' saved' : '';
+    return `<div class="today-card${topCls}">
+      <div class="today-score ${scoreCls}">${j.score||'-'}</div>
+      <div>
+        <div><strong>${esc(j.company)}</strong> · ${esc(j.title||'')}${steppingBadge}${netOverrideBadge}</div>
+        <div class="today-meta">${esc(j.location||'—')} · posted ${esc(j.posted_date||'unverified')}${j.date_source ? ` (${esc(j.date_source)})` : ''}</div>
+        <div class="today-why">${esc(j.why_fits||'')}</div>
+      </div>
+      <div class="today-actions">
+        <a class="btn" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer">Apply on site →</a>
+        ${resumeFile ? `<button class="btn" onclick="presentFile('${esc(resumeFile)}')">Tailored resume</button>` : ''}
+        ${coverFile ? `<button class="btn" onclick="presentFile('${esc(coverFile)}')">Cover letter</button>` : ''}
+        ${folder ? `<button class="btn" onclick="presentFolder('${esc(folder)}')">Open folder</button>` : ''}
+        <div style="display:flex; gap:4px; margin-top:4px">
+          <button class="btn${appliedCls}" style="flex:1; margin:0" onclick="setStatus('${esc(j.url)}', 'applied')">Applied</button>
+          <button class="btn${savedCls}" style="flex:1; margin:0" onclick="setStatus('${esc(j.url)}', 'saved')">Save</button>
+          <button class="btn${skippedCls}" style="flex:1; margin:0" onclick="setStatus('${esc(j.url)}', 'skipped')">Skip</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderVolumeChart() {
+  const ctx = document.getElementById('chart-volume');
+  const days = [];
+  const today = new Date(); today.setHours(0,0,0,0);
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    days.push(d.toISOString().slice(0,10));
+  }
+  const counts = days.map(day => {
+    const dayJobs = JOBS.filter(j => (j.scored_date||'').slice(0,10) === day);
+    return {
+      scanned: dayJobs.length,
+      qualified: dayJobs.filter(j => j.outcome === 'qualified').length,
+      applied: dayJobs.filter(j => (FEEDBACK[j.url]||{}).status === 'applied').length
+    };
+  });
+  if (window._cv) window._cv.destroy();
+  window._cv = new Chart(ctx, {
+    type: 'line',
+    data: { labels: days.map(d => d.slice(5)), datasets: [
+      { label:'Scanned', data: counts.map(c=>c.scanned), borderColor: COLORS.grey, backgroundColor:'transparent', borderWidth:2, tension:0.3 },
+      { label:'Qualified', data: counts.map(c=>c.qualified), borderColor: COLORS.navy, backgroundColor:'transparent', borderWidth:2, tension:0.3 },
+      { label:'Applied', data: counts.map(c=>c.applied), borderColor: COLORS.green, backgroundColor:'transparent', borderWidth:2, tension:0.3 }
+    ]},
+    options: { responsive:true, maintainAspectRatio:false,
+      plugins: { legend: { position:'bottom', labels:{ font:{ size:11 } } } },
+      scales: { y: { beginAtZero:true, ticks:{ stepSize:1 } }, x: { ticks:{ font:{ size:10 } } } }
+    }
+  });
+}
+
+function renderGeoChart() {
+  const ctx = document.getElementById('chart-geo');
+  const buckets = {};
+  lastNDays(30).filter(j => j.outcome === 'qualified').forEach(j => {
+    const loc = (j.location_type || j.location || 'Unknown').toString();
+    buckets[loc] = (buckets[loc] || 0) + 1;
+  });
+  const entries = Object.entries(buckets).sort((a,b) => b[1] - a[1]).slice(0, 8);
+  if (window._cg) window._cg.destroy();
+  window._cg = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: entries.map(e => e[0]), datasets: [{ data: entries.map(e => e[1]), backgroundColor: COLORS.navy }] },
+    options: { indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins: { legend: { display:false } },
+      scales: { x: { beginAtZero:true, ticks:{ stepSize:1 } } }
+    }
+  });
+}
+
+function renderSkillsChart() {
+  const ctx = document.getElementById('chart-skills');
+  const counts = {};
+  lastNDays(30).filter(j => j.outcome === 'qualified').forEach(j => {
+    (j.skills_mentioned || []).forEach(s => {
+      const k = s.trim();
+      if (k) counts[k] = (counts[k] || 0) + 1;
+    });
+  });
+  const entries = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0, 10);
+  if (window._cs) window._cs.destroy();
+  window._cs = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: entries.map(e => e[0]), datasets: [{ data: entries.map(e => e[1]), backgroundColor: COLORS.yellow }] },
+    options: { indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins: { legend: { display:false } },
+      scales: { x: { beginAtZero:true, ticks:{ stepSize:1 } } }
+    }
+  });
+}
+
+function renderPipeline() {
+  const wrap = document.getElementById('pipeline-table-wrap');
+  const pipeline = JOBS
+    .filter(j => j.outcome === 'qualified')
+    .filter(j => !(FEEDBACK[j.url] && ['applied','skipped'].includes(FEEDBACK[j.url].status)))
+    .sort((a,b) => (b.score||0) - (a.score||0));
+  if (!pipeline.length) {
+    wrap.innerHTML = '<p style="color:var(--grey); padding:10px">No undecided jobs in the pipeline.</p>';
+    return;
+  }
+  wrap.innerHTML = `<table><thead><tr>
+    <th>Score</th><th>Company / Role</th><th>Location</th><th>Posted</th><th>Materials</th><th>Decision</th>
+  </tr></thead><tbody>
+  ${pipeline.map(j => {
+    const fb = FEEDBACK[j.url] || {};
+    const chip = (j.score||0) >= 85 ? 'chip chip-green' : 'chip chip-yellow';
+    const savedCls = fb.status === 'saved' ? ' saved' : '';
+    return `<tr>
+      <td class="score"><span class="${chip}">${j.score||'-'}</span></td>
+      <td><div><strong>${esc(j.company)}</strong></div><div class="truncate"><a class="apply-link" href="${esc(j.url)}" target="_blank">${esc(j.title||'')}</a></div></td>
+      <td>${esc(j.location||'—')}</td>
+      <td>${j.posted_date ? esc(j.posted_date) : '—'}</td>
+      <td>${j.tailored_files ? `<a class="small-link" href="javascript:void(0)" onclick="presentFolder('${esc(j.tailored_files)}'); return false;">open folder</a>` : '—'} ${j.url ? `· <a class="small-link" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer">view JD</a>` : ''}</td>
+      <td>
+        <button class="btn" onclick="setStatus('${esc(j.url)}', 'applied')">Applied</button>
+        <button class="btn${savedCls}" onclick="setStatus('${esc(j.url)}', 'saved')">Save</button>
+        <button class="btn" onclick="setStatus('${esc(j.url)}', 'skipped')">Skip</button>
+      </td>
+    </tr>`;
+  }).join('')}
+  </tbody></table>`;
+}
+
+function renderLog() {
+  const wrap = document.getElementById('log-table-wrap');
+  const items = JOBS
+    .filter(j => (FEEDBACK[j.url]||{}).status === CURRENT_TAB)
+    .sort((a,b) => new Date((FEEDBACK[b.url]||{}).timestamp||0) - new Date((FEEDBACK[a.url]||{}).timestamp||0));
+  if (!items.length) {
+    wrap.innerHTML = `<p style="color:var(--grey); padding:10px">No jobs marked <strong>${CURRENT_TAB}</strong> yet.</p>`;
+    return;
+  }
+  wrap.innerHTML = `<table><thead><tr>
+    <th>When</th><th>Company / Role</th><th>Location</th><th>Score</th><th>Source</th><th></th>
+  </tr></thead><tbody>
+  ${items.map(j => {
+    const ts = (FEEDBACK[j.url]||{}).timestamp;
+    return `<tr>
+      <td>${ts ? new Date(ts).toLocaleDateString() : '—'}</td>
+      <td><div><strong>${esc(j.company)}</strong></div><div class="truncate">${esc(j.title||'')}</div></td>
+      <td>${esc(j.location||'—')}</td>
+      <td class="score">${j.score||'—'}</td>
+      <td><a class="small-link" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer">view JD</a></td>
+      <td><button class="btn" onclick="setStatus('${esc(j.url)}', 

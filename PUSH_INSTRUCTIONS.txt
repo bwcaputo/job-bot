@@ -1,0 +1,81 @@
+JOB BOT — GIT PUSH INSTRUCTIONS
+================================
+
+The repo is staged. Files are sterilized (no personal data, no email addresses,
+no specific target companies of yours — just generic templates and the workshop
+setup prompt). License is MIT under your name.
+
+Run these commands from PowerShell or Git Bash on your Windows machine:
+
+1) CREATE THE EMPTY REPO ON GITHUB
+   Go to https://github.com/new
+   - Repository name: job-bot   (or anything you like)
+   - Description: "Automated daily job-search workflow built on Cowork
+                   scheduled tasks. MIT licensed."
+   - Public or Private — your call
+   - DO NOT initialize with README/LICENSE/.gitignore (we have our own)
+   Click "Create repository"
+   Copy the URL it gives you (looks like https://github.com/<your-username>/job-bot.git)
+
+2) PUSH FROM THIS FOLDER
+   Open a terminal (PowerShell or Git Bash), navigate to the repo folder:
+
+       cd "C:\Users\bwcap\OneDrive\Documents\Claude\Job Bot\github_repo"
+
+   Then run:
+
+       git init -b main
+       git add -A
+       git commit -m "Initial commit: Job Bot — automated daily job-search workflow"
+       git remote add origin https://github.com/<your-username>/job-bot.git
+       git push -u origin main
+
+   Replace <your-username> with your actual GitHub username (or use the exact
+   URL GitHub gave you in step 1).
+
+   First push will prompt for your GitHub credentials. Use a Personal Access
+   Token if password auth is disabled (it is, for everyone, since 2021):
+   https://github.com/settings/tokens — generate one with "repo" scope, paste
+   it as your password when prompted.
+
+3) AFTER THE PUSH
+   - Visit your repo URL to confirm it looks right
+   - Update the README's Credits section with your real GitHub URL
+     (currently it says https://github.com/ as a placeholder)
+   - Optionally add topics on GitHub: "claude", "mcp", "agent", "job-search",
+     "automation", "mba" — helps discovery
+   - Delete this PUSH_INSTRUCTIONS.txt before or after pushing, your call
+
+WHAT'S IN THE REPO
+==================
+
+11 files, ~3,200 lines total, no personal data:
+
+   README.md                       Project overview, scoring rubric, setup path
+   LICENSE                         MIT, Copyright 2026 Brian Caputo
+   .gitignore                      Excludes personal data (resume, applications,
+                                   ledger, configs, dashboards) from future commits
+   setup_prompt.md                 The 87KB paste-and-go workshop prompt
+   playbook_template.md            The daily playbook (parameterized)
+   dashboard.html                  Dashboard template (empty baked-data block)
+   bake.py                         The data-baking script
+   preferences_template.md         User preferences template
+   projects_template.md            Project ledger template
+   cover_letter_template.md        Cover letter template
+   workbook_deep_tailor.md         Optional 30-min post-setup tuning workbook
+
+WHAT'S NOT IN THE REPO (BY DESIGN)
+==================================
+
+Stays local on your machine, never committed:
+- Your resume (master/resume_master.docx)
+- Your applications log (applications/applications.jsonl)
+- Your job ledger (briefs/all_jobs.jsonl, briefs/feedback.json)
+- Your actual target company list and preferences (config/preferences.md)
+- Your project ledger (master/projects.md)
+- Your dashboard with baked data (dashboard/dashboard.html)
+- The per-date materials folders ("daily job brief/YYYY-MM-DD/")
+
+The .gitignore in this repo enforces those exclusions. If someone clones your
+repo and runs the setup prompt, they create their OWN files in their OWN
+folders — yours never get committed.
