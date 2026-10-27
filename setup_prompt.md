@@ -1,1050 +1,925 @@
-# Job Bot — Workshop Setup Prompt (v1)
+# Job Bot — Setup Prompt (v2, October 2026)
 
-Paste this entire block into a fresh Cowork session. Claude will interview you, then build your personal Job Bot end to end. Setup takes ~5 minutes plus a 2-minute resume upload. You can ignore the rest of this introduction — Claude reads it as instructions.
+Paste this whole file into a new chat in the Claude desktop app with Claude Opus 5.5 selected. Claude interviews you, builds your Job Bot, publishes your dashboard, and schedules the daily run. Plan on about 10 minutes. Everything below the line is instructions for Claude.
 
 ---
 
-You are setting up a personal Job Bot for the user. This is a workshop deliverable built by {USER_NAME} for the {USER_UNIVERSITY} {USER_MBA_PROGRAM} cohort, May 2026. Execute every step in order. Do not skip. Steps marked CRITICAL fail the whole setup if skipped.
+You're setting up Job Bot for the person in this chat. Job Bot is a daily job search: it checks their target companies' career sites for roles posted in the last 7 days, scores each one against their resume, drafts a tailored one-page resume and cover letter for the best matches, and keeps a dashboard current.
 
-## What this bot does
+Work through the steps in order. Where a step describes an action, such as connecting a folder, publishing an artifact, or creating a scheduled task, use whatever tool this session has for it. The appendices hold the exact contents of the files you'll write: copy them verbatim, filling only the `{PLACEHOLDERS}` a step names.
 
-Every weekday morning, it searches a user-defined list of target companies for job postings, scores each posting against the user's resume on a 100-point rubric, generates a tailored resume and cover letter for the top matches, and updates a persistent dashboard artifact the user can open anytime. The user is the fishing pole; the bot is what's always in the water.
+## 1. Interview
 
-## STEP 1 — Confirm and interview the user
+Open with one line: you'll ask four questions, then need their resume and target company list, and setup takes about 10 minutes.
 
-First, send the user this exact message:
+Ask these four. Use a multiple-choice question tool if you have one (it fits up to four options per question, plus a free-text answer); otherwise ask in chat.
 
-> Welcome. I'll set up your personal Job Bot in about 5 minutes. I'll ask 5 quick questions, then ask you to drop your resume and list your target companies. Ready?
+1. **Target roles** (free text): "What function and roles are you targeting? For example, 'Finance: FP&A, strategic finance' or 'Consulting: ERP, AI, operations.'"
+2. **Geography:** My metro plus remote · Remote only · Open to relocating · Anywhere, including international.
+3. **Schedule:** Weekdays at 7 AM (Recommended) · Weekdays at 6 AM · Weekly, Sunday evening · or a time they name.
+4. **Selectivity:** Balanced, 75+ (Recommended) · Strict, 85+, fewer matches · Relaxed, 65+, more volume.
 
-Wait for confirmation. Then use `AskUserQuestion` to run these questions in three batches.
+Then, in chat:
 
-**Batch 1 — Function and roles** (two questions in one call):
+- Their home city, unless they chose remote only, and their time zone if the city doesn't settle it.
+- Their master resume as a .docx or .pdf. A rough one works.
+- 20–60 target companies, one per line. Plain names are fine. Runs rotate through long lists, so every company gets checked every few days.
 
-Question 1: "What's your primary business function?" (single-select)
-Header: "Function"
-Options: Marketing · Sales / BD · IT or Technology · Finance · Accounting · Operations / Supply Chain · Consulting · Strategy · HR or People · Product Management
+Take their name, email, phone, and LinkedIn URL from the resume, and ask only for what's missing.
 
-Question 2: "Which roles in that function?" (multi-select)
-Header: "Roles"
-Options depend on Q1 answer — surface the matching set below:
-- **Marketing:** Brand · Product Marketing · Growth · Demand Gen · Marketing Ops · Content · Field
-- **Sales / BD:** AE · Solutions Engineer · Customer Success · Account Manager · Channel · Sales Engineering
-- **IT or Technology:** Solutions Engineer · Implementation Consultant · Cloud Architect · Data Engineer · Security · Customer Engineer · Forward-Deployed
-- **Finance:** FP&A · Corporate Finance · Treasury · IR · Finance Transformation · Strategic Finance
-- **Accounting:** Senior Accountant · Audit · Tax · Controller-track · Technical Accounting · FinOps
-- **Operations / Supply Chain:** Supply Chain Manager · S&OP · Procurement · Logistics · Manufacturing Ops · Operations Manager
-- **Consulting:** AI · ERP · Strategy · Digital Transformation · Ops · M&A
-- **Strategy:** Strategy & Ops · BizOps · Chief of Staff · Corporate Strategy · M&A Strategy
-- **HR or People:** Talent Acquisition · People Ops · L&D · Comp · HRBP · DEI
-- **Product Management:** PM · TPM · Product Ops · Product Marketing · Growth PM
+## 2. Connect a folder
 
-**Batch 2 — Geography, schedule, selectivity** (three questions in one call):
+Ask them to connect the folder where Job Bot will live; Documents/Claude works well. In the Claude desktop app, that's the + menu beside the message box, then Add folder. Everything goes in a `Job Bot` folder inside it.
 
-Question 3: "Where will you work?" (single-select)
-Header: "Geography"
-Options: My city + remote-US · Remote-US only · Open to relocation for top firms · Open anywhere in US · International OK
+If a `Job Bot` folder from an earlier version is already there, keep its data: `briefs/`, `applications/`, `master/resume_master.md`, `master/projects.md`, and `config/preferences.md`. Replace everything else with this version's files. Bring their preferences up to the new template: add the sections theirs lacks, move named people from "Network signals" into "Network contacts", and copy the contact line from their old cover letter template into the Candidate snapshot. Move old dated folders into `daily/` if they want, and tell them what you kept.
 
-Question 4: "When should the bot run?" (single-select)
-Header: "Schedule"
-Options: 7:00 AM weekdays (Recommended) · 6:00 AM weekdays · Weekly Sunday evening digest · Custom
+## 3. Build the files
 
-Question 5: "Match selectivity?" (single-select)
-Header: "Selectivity"
-Options: Balanced (75+ match — Recommended) · Strict (85+ only, fewer hits) · Relaxed (65+ match, more volume) · I'll tune later
+Create this structure inside `Job Bot`:
 
-**Batch 3 — Free text prompts** (chat messages, not AskUserQuestion):
-
-Send: "If you said 'My city + remote-US' or 'Open to relocation for top firms,' tell me your home city (e.g., Denver, CO)."
-
-Wait for response. Then:
-
-Send: "Drop your master resume (.docx or .pdf preferred — Word document works best). Don't have one polished yet? Send what you have and I'll work with it."
-
-Wait for upload.
-
-Then:
-
-Send: "List 20–60 named target companies, one per line. Plain names are fine — the bot auto-discovers the ATS. More than 60 strains the daily search budget. Examples: Slalom, Wipfli, Anthropic, Microsoft, Salesforce."
-
-Wait for response.
-
-## STEP 2 — Mount working folder
-
-Call `mcp__cowork__request_cowork_directory`. The user will pick a parent folder; recommend they choose `Documents/Claude` or similar. The bot will create a subfolder called `Job Bot` inside it.
-
-Let MOUNT = the mounted Windows path.
-
-## STEP 3 — Create folder structure
-
-Run via bash:
-
-```bash
-mkdir -p "<MOUNT>/Job Bot/applications"
-mkdir -p "<MOUNT>/Job Bot/briefs"
-mkdir -p "<MOUNT>/Job Bot/config"
-mkdir -p "<MOUNT>/Job Bot/dashboard"
-mkdir -p "<MOUNT>/Job Bot/master"
-mkdir -p "<MOUNT>/Job Bot/workshop"
-touch "<MOUNT>/Job Bot/briefs/all_jobs.jsonl"
-touch "<MOUNT>/Job Bot/applications/applications.jsonl"
-echo '{}' > "<MOUNT>/Job Bot/briefs/feedback.json"
+```
+config/        preferences.md, daily_brief_prompt.md, scheduled_task_prompt.md
+master/        resume_master.md, projects.md, cover_letter_template.md
+briefs/        all_jobs.jsonl (empty), feedback.json (containing {})
+applications/  applications.jsonl (empty)
+dashboard/     bake.py, dashboard.html
+daily/         one dated folder per run, created by the runs
 ```
 
-## STEP 4 — Write `config/preferences.md`
+- `config/preferences.md`: Appendix A, filled from the interview. Turn their roles into 8–12 role keywords with title variants and a title synonym map for their function. Add anti-keywords that suit their function. Set the surface threshold from question 4 (75, 85, or 65). Put their company list under Target companies. Leave the stepping-stone tier and network contacts at "None yet"; the workbook fills those in.
+- `master/resume_master.md`: the resume in Markdown, with sections for contact, summary, education, experience (newest first), projects, skills, and certifications. Keep every fact and number as written. Runs tailor only from this file, so tell them to correct anything wrong here.
+- `master/projects.md`: Appendix B. If the resume lists projects, enter them in this format with `fits:` tags.
+- `master/cover_letter_template.md`: Appendix C.
+- `config/daily_brief_prompt.md`: Appendix D.
+- `dashboard/bake.py`: Appendix F.
+- `dashboard/dashboard.html`: Appendix G, with `{FIRST_NAME}` and `{SEARCH_TAGLINE}` filled in. The tagline is their function, roles, and geography in under 50 characters, such as "Finance · FP&A · Denver + remote". The file is long; confirm its last line is `<!-- job-bot:end -->`, and if it isn't, the copy was cut off, so write it again.
 
-Interpolate the user's answers from Step 1 into this template and write to `<MOUNT>/Job Bot/config/preferences.md`:
+Run `python3 dashboard/bake.py` once. It should finish without an error; a new setup bakes 0 rows.
 
-```markdown
-# Job Search Preferences — <USER NAME>
+## 4. Publish the dashboard
 
-Edit this file anytime. The daily bot reads it on every run.
+Publish `dashboard/dashboard.html` as an artifact. If artifact capabilities are available, give it the `db` capability, so the Applied, Save, and Skip buttons save where daily runs can read them; without it the page still works and keeps marks in the browser. Write the artifact's URL into the Dashboard section of `config/preferences.md`.
+
+## 5. Schedule the daily run
+
+Fill Appendix E with their first name and the dashboard URL, and save it as `config/scheduled_task_prompt.md`. Then create a scheduled task:
+
+- **Name:** `<first name>-job-bot`, lowercase.
+- **When:** their answer to question 3, in their time zone.
+- **Prompt:** the filled Appendix E.
+- **Folder:** the `Job Bot` folder. Runs need their computer.
+- **Model:** Claude Opus 5.5. If you can't set the model yourself, tell them to choose it in the task's settings under Scheduled in the sidebar.
+
+If this session can't create scheduled tasks, walk them through it: Scheduled in the sidebar, then + New task; paste the filled Appendix E as the prompt; choose the frequency, Claude Opus 5.5, and the `Job Bot` folder; then Save.
+
+If they already have a Job Bot scheduled task from an earlier version, tell them to delete it under Scheduled so two runs don't fire each morning.
+
+Tell them in a line or two that runs happen while the computer is awake and the Claude desktop app is open, and that a missed run fires once the app opens again. If runs will stop to ask for approval, they can run the task once from Scheduled to approve its tools, or turn on automatic approval in the task's settings.
+
+## 6. First run
+
+Unless they'd rather wait for the morning, follow `config/daily_brief_prompt.md` once now so the dashboard opens with data.
+
+## 7. Offer Gmail and the workbook
+
+If Gmail isn't connected, offer to connect it. With it, each run updates the applications tracker from recruiter replies; it only reads mail.
+
+Then offer the 30-minute deep-tailor workbook: anti-keywords, compensation floor, network contacts, cover-letter voice, scoring weights, excluded industries, stepping-stone companies, and the project ledger. If they want it, save Appendix H as `Job Bot/workshop/deep_tailor.md`.
+
+## 8. Wrap up
+
+Send one short message covering:
+
+- The dashboard link. Each morning they open it, mark matches Applied, Save, or Skip, review the drafts, and apply on the company's site; Claude in Chrome can help with Workday and Greenhouse forms.
+- When runs happen and which model they use.
+- Where files land: `Job Bot/daily/YYYY-MM-DD/`.
+- How to tune it: tell Claude, or edit `Job Bot/config/preferences.md`.
+
+---
+
+## Appendix A — `config/preferences.md`
+
+<!-- appendix: preferences_template.md -->
+````markdown
+# Job Search Preferences — {USER_NAME}
+
+Every run reads this file. Edit it anytime, or tell Claude what to change.
 
 ## Candidate snapshot
-- {ROLE FROM Q2}, currently {USER DESCRIBES — to fill in later}
-- Home base: {CITY FROM BATCH 3}
-- Geography rule: {ANSWER FROM Q3}
+- {One line, e.g. "Full-time MBA, Class of 2027, five years in supply chain operations"}
+- Home base: {City, State}
+- Time zone: {e.g. America/Denver}
+- Contact line for cover letters: {email} | {phone} | {LinkedIn URL}
+
+## Dashboard
+- URL: {DASHBOARD_URL}
+- Schedule: {e.g. Weekdays at 7:00 AM}
 
 ## Target function and roles
-**Primary function:** {Q1 answer}
-**Specific roles:** {Q2 answers, comma-separated}
+- Function: {e.g. Finance}
+- Roles, in priority order: {e.g. FP&A, Strategic Finance, Corporate Development}
 
-## Match selectivity
-**Surface threshold:** {75 if Balanced, 85 if Strict, 65 if Relaxed}
-**Star threshold:** {85}
+## Role keywords
+Search phrases, 8–12, with common variants of each title.
+- {e.g. "FP&A Manager", "Senior Financial Analyst", "Finance Business Partner"}
 
-## Role keywords (used for search and matching)
-Generate 8–12 keyword phrases from the user's Q2 answers. For each role, include 2–3 variants (e.g., "Solutions Engineer" + "Pre-Sales Engineer" + "Sales Engineer"). Add 2–3 "stretch" titles relevant to the function.
+## Title synonym map
+Titles that count as a match for the roles above.
+- {e.g. "Finance Business Partner" → FP&A}
+- {e.g. "Customer Engineer" / "Implementation Consultant" → Solutions Engineer}
 
-## Anti-keywords (filter out)
-- "Software Engineer", "SDE", "DevOps", "SRE" — pure dev roles (unless function is IT/Technology)
-- "Sales Executive" with no Solutions or technical qualifier — pure quota sales (unless function is Sales)
-- Any "10+ years" or "Director / Principal / VP" minimums
-- Active TS/SCI clearance required (unless user holds one)
+## Anti-keywords
+Postings containing these drop before scoring.
+- {e.g. "10+ years", "Director", "Vice President"}
+- {e.g. "Active TS/SCI clearance" unless you hold one}
 
-## Target companies (focused search every run)
-Paste the user's company list here, one per line. Aim for 20–60.
+## Target companies
+One per line, 20–60 total. Add `also_search_as:` for alternate names. Runs record each company's careers site as `verified:` once they find it.
+- {Company}
+- {e.g. PwC (also_search_as: PricewaterhouseCoopers)}
 
-{USER'S COMPANY LIST}
+## Stepping-stone tier
+Companies where a role scoring 65 or more but under the surface threshold still shows up, with a yellow badge.
+- None yet
 
-## Auto-widen rule
-Target ~3 qualified jobs per day. If fewer than 3 from the named target-company list hit the score floor on a given run, the bot may widen to companies NOT on the list, under these conditions:
-- The resume-to-JD match still scores ≥ {floor} by the rubric (no exceptions, no padding)
-- The role is in one of the target role categories above
-- Source rule and freshness rule still apply
-Never surface a sub-floor job. Quality over quantity remains the rule.
+## Network contacts
+A named contact at a company earns full network points (10) on its roles. Format: Company — Person — Relationship.
+- None yet
 
-## Source rule (HARD)
-Only company-owned career sites count as primary sources. Aggregators (LinkedIn, Indeed, Glassdoor, ZipRecruiter) are disqualified as apply links. Aggregators may be used only to discover a candidate URL or cross-check a posting date — final job in the brief must point to the company's own URL.
+## Geography
+- {Metro}: yes
+- Remote-US: yes
+- Hybrid {Metro}: yes
+- On-site elsewhere: {yes/no}
+- Travel: up to {X}%
 
-Supported ATSes (treat as company-direct): Greenhouse (boards.greenhouse.io, job-boards.greenhouse.io), Lever (jobs.lever.co), Ashby (<brand>.ashbyhq.com), iCIMS (<brand>.icims.com, careers-<brand>.icims.com), Workday (<brand>.wd1.myworkdayjobs.com), BambooHR (<brand>.bamboohr.com), Workable (apply.workable.com/<brand>).
+## Scoring (0–100)
+- 35: role keyword overlap with the title and description (title synonyms count)
+- 20: experience fit (penalize minimums above 7 years)
+- 15: location fit
+- 10: domain fit
+- 10: skill overlap
+- 10: network (named contact, alumni at the firm, referral)
 
-## Freshness rule (HARD)
-Only postings dated within the last 7 calendar days qualify. Verify posting date via JSON-LD `datePosted`, visible "Posted X days ago" text, og:updated_time, or the company's careers index page. If none verifiable, skip the job. Also: drop any posting with "Sorry, this job was removed" or similar closure marker.
+Surface threshold: {FLOOR}
+Star threshold: 85
 
-## Match scoring (0–100)
-- 35 pts: role keyword overlap with title + JD
-- 20 pts: years-of-experience fit (penalize >7 yr minimums)
-- 15 pts: location fit
-- 10 pts: domain fit
-- 10 pts: skill overlap
-- 10 pts: network (named alumni / personal contact / referral signal)
+## Widening
+Aim for about 3 qualified roles a day. When named targets come up short, runs may search beyond them; those roles meet the same threshold, source, and freshness rules.
 
-Surface threshold: {floor}. Star threshold: 85.
+## Source and freshness
+- Apply links go to the employer's careers site or its applicant tracking system. Job boards only help find postings.
+- Postings must be dated within the last 7 days.
 
-## Application etiquette rules
-- Cover letter: 250 words max, active voice, no AI-tells (no "leverage," "robust," "transformative," etc.)
-- Resume tailoring: reorder bullets to match JD priorities, swap keyword variants where honest, never fabricate
-- Resume must be one full page, ≥93% fill ratio (bot verifies via PDF conversion)
+## Writing rules
+- Cover letter: 250 words max, active voice, specific to the posting.
+- Resume: one full page (93% or more), tailored from the master resume, with every fact taken from it.
 
 ## Dealbreakers
-- W-2 contract roles under 6 months
-- Commission-only comp
-- Roles requiring credentials user doesn't hold (CPA, active clearance, etc.)
-```
+- Credentials you don't hold (CPA, active clearance, and so on)
+- W-2 contracts under 6 months
+- Commission-only pay
+- {Add your own}
 
-## STEP 5 — Write `master/resume_master.md`
+## Compensation floor
+- None set
 
-Extract text from the uploaded resume and convert to markdown. Save to `<MOUNT>/Job Bot/master/resume_master.md`. Use libreoffice for .doc/.docx conversion if needed:
+## Industries to exclude
+- None set
+````
+<!-- /appendix -->
 
-```bash
-libreoffice --headless --convert-to txt:Text "<uploaded-resume-path>" --outdir /tmp
-```
+## Appendix B — `master/projects.md`
 
-Structure the markdown with these sections: contact, summary, education, professional experience (most recent first), selected projects, skills, certifications.
-
-## STEP 6 — Write `master/cover_letter_template.md`
-
-Use this template (literal content):
-
-```markdown
-# Cover Letter Template
-
-*Bot instructions: this is the template. Replace bracketed sections per role. Keep total length ≤ 250 words. Open with the angle, never "I am writing to express interest." Active voice throughout. No em-dashes as separators. No "leverage," "robust," "transformative," "drove," "spearheaded." No negative parallelism ("It's not X, it's Y"). No bloated verbs ("serves as," "represents a").*
-
-[Date]
-
-[Hiring Manager Name | "Hiring Team" if unknown]
-[Company]
-[City, State]
-
-Dear [Hiring Manager Name | Hiring Team],
-
-[**OPENING — 2 sentences. State the angle: why this role at this firm, anchored in something concrete from the JD or the firm's published work. Do not open with "I am writing to express interest."**]
-
-[**EVIDENCE — 4-5 sentences. Three concrete impact examples that map to the JD's stated requirements. Quantify everything.**]
-
-[**BRIDGE — 2-3 sentences. Connect your differentiator (education, recent project, unique experience) to the specific JD requirement.**]
-
-[**CLOSE — 1-2 sentences. Specific and direct. State location and availability.**]
-
-Sincerely,
-
-[Your Name]
-[email] | [phone] | [linkedin URL]
-```
-
-## STEP 7 — Write `master/projects.md`
-
-Create a blank project ledger the user fills in this week:
-
-```markdown
+<!-- appendix: projects_template.md -->
+````markdown
 # Project Ledger
 
-Canonical list of your active and recent projects. The bot reads this on every run and uses it for the **Selected Projects** section in tailored resumes and the **bridge paragraph** in cover letters. Bot picks 1–3 projects per role based on JD relevance.
+Your active and recent projects. Every run reads this file and picks 1–3 projects per role, by relevance, for the Selected Projects section of the tailored resume and the bridge paragraph of the cover letter.
 
-**How to update:** Edit this file directly, or tell Claude in chat: "Add this project to my job bot memory: [details]."
+**To update it:** edit this file, or tell Claude, "Add this project to my Job Bot: [details]." New projects go at the top of their section. Move old or off-target projects to the Archive instead of deleting them; past work still backs up the resume.
 
-**Format per project:** name, dates, one-line summary, what was built, quantified outcomes, technologies, and `fits:` tags so the bot knows which JD types to surface it for.
+**Each project needs:** name, dates, role, what you built, a quantified outcome, tools, and `fits:` tags naming the kinds of roles it supports.
 
 ---
 
 ## Active
 
-### [Project 1 Name]
-- **Dates:** [Start – End or Ongoing]
-- **Role:** [Your role]
-- **Built:** [1-2 sentences: what you built]
-- **Why it matters:** [1 sentence: what the work demonstrated]
-- **Tech:** [Technologies / methodologies / tools]
-- **fits:** [comma-separated JD type tags, e.g., AI consulting, finance transformation]
-- **Verify before use:** [any numbers or claims to confirm before resume submission]
+### {Project name 1}
+- **Dates:** {Start – End, or Ongoing}
+- **Role:** {Your role}
+- **Built:** {1–2 sentences on what you built}
+- **Why it matters:** {1 sentence on what it shows, with a number}
+- **Tech:** {Tools, methods, frameworks}
+- **fits:** {comma-separated role types, e.g. AI consulting, finance transformation, supply chain}
+- **Verify before use:** {numbers or claims to confirm before they go on a resume}
 
-### [Project 2 Name]
-[Same structure]
+### {Project name 2}
+- **Dates:**
+- **Role:**
+- **Built:**
+- **Why it matters:**
+- **Tech:**
+- **fits:**
+
+### {Project name 3, optional}
+- **Dates:**
+- **Role:**
+- **Built:**
+- **Why it matters:**
+- **Tech:**
+- **fits:**
 
 ---
 
 ## Archive
-*(Empty for now. Move projects here when they're 12+ months old or no longer relevant.)*
+
+*(Empty for now. Move projects here once they're 12+ months old or off-target. They stay available as backup for resume claims.)*
 
 ---
 
-## Bot usage rules
+## How runs use this file
 
-When tailoring a resume for a specific JD:
-1. Read this file in full.
-2. Skip any project tagged `exclude_from_outputs: true`.
-3. Score each remaining Active project against the JD using the `fits:` tags.
-4. Pick the top 1–3 by relevance. Never include a project that doesn't fit.
-5. Never publish a TBD line.
-6. Never fabricate. If a number isn't verified, don't invent one.
-```
+When tailoring a resume:
+1. Skip projects tagged `exclude_from_outputs: true`; they never appear in resumes, cover letters, or anything else that leaves the folder.
+2. Rank the rest against the posting by `fits:` tags and description, and use the top 1–3. Leave the section short, or out, when nothing fits.
+3. Skip any project with TBD details and flag the gap in the daily summary.
+4. Use only numbers written here or in the master resume.
 
-## STEP 8 — Write `config/daily_brief_prompt.md`
+When drafting the cover letter's bridge paragraph, pick the single best-fit project and lead with what was built and its outcome, in two sentences or fewer.
 
-This is the playbook the scheduled task executes every morning. Write the literal content from the playbook section at the bottom of this prompt (see APPENDIX A below). Interpolate the user's selectivity floor and run time.
+Aim for 3–6 active projects across professional, academic, and personal work, each with a number attached ("cut close time 2 days," "$40K annual savings," "12 clients onboarded").
+````
+<!-- /appendix -->
 
-## STEP 9 — Write `dashboard/bake.py`
+## Appendix C — `master/cover_letter_template.md`
 
-Write the literal content from APPENDIX B below to `<MOUNT>/Job Bot/dashboard/bake.py`.
+<!-- appendix: cover_letter_template.md -->
+````markdown
+# Cover Letter Template
 
-## STEP 10 — Write `dashboard/dashboard.html`
-
-Write the literal content from APPENDIX C below to `<MOUNT>/Job Bot/dashboard/dashboard.html`.
-
-## STEP 11 — Schedule the daily task
-
-Call `mcp__scheduled-tasks__create_scheduled_task` with:
-- `taskId`: `<user-firstname>-daily-job-brief` (lowercase, kebab-case)
-- `cronExpression`: based on user's Q4 answer (default `"0 7 * * 1-5"` for 7 AM weekdays)
-- `description`: "Daily job brief for <user name> — search, score, tailor materials, persist ledger, bake dashboard, refresh artifact. Steps 5 and 6 are non-negotiable."
-- `prompt`: literal content from APPENDIX D below, interpolating the user's MOUNT path
-
-## STEP 12 — Register the persistent dashboard artifact
-
-Call `mcp__cowork__create_artifact` with:
-- `id`: `<user-firstname>-job-dashboard` (lowercase, kebab-case)
-- `html_path`: `<MOUNT>\Job Bot\dashboard\dashboard.html`
-- `mcp_tools`: `["mcp__workspace__bash", "mcp__cowork__present_files"]`
-- `description`: "Personal job-search dashboard for <user name>. Reads briefs/all_jobs.jsonl + briefs/feedback.json + applications/applications.jsonl. Shows today's brief, lifecycle metrics, daily volume trend, location distribution, top JD skills, active pipeline, applications tracker."
-
-**Important:** save the artifact ID returned. The scheduled task's prompt needs to reference it. Update the scheduled task's prompt to use this exact ID in Step 6.
-
-## STEP 13 — Run the first scan now
-
-Execute the playbook once immediately so the dashboard isn't empty on first open. This is just steps 2–6 of the daily playbook (search, score, generate materials for any qualifiers, bake, update). Skip if the user is in a rush.
-
-## STEP 14 — Offer the deep-tailor workbook
-
-Use `AskUserQuestion`:
-
-Question: "Want me to generate a 30-minute deep-tailor workbook? It walks you through (1) anti-keywords, (2) compensation floor, (3) named network contacts, (4) cover-letter voice preferences, (5) score-rubric weight tuning, (6) industries to exclude, (7) stepping-stone companies, (8) project ledger entries. Saved to `Job Bot/workshop/deep_tailor.md` for you to complete this week."
-Header: "Deep tailor"
-Options: Yes, generate the workbook now (Recommended) · Skip, I'll tune later · Show me what's in the workbook first
-
-If yes, write the workbook (APPENDIX E) to `<MOUNT>/Job Bot/workshop/deep_tailor.md`.
-
-## STEP 15 — Final summary
-
-Send the user:
-
-> Setup complete. Your Job Bot is live.
->
-> **What's in your sidebar now:** A persistent dashboard artifact. Open it to see today's brief, pipeline metrics, and run history.
->
-> **What runs tomorrow morning at {scheduled time}:** The bot searches your {N} target companies, scores any new postings against your resume, generates tailored resumes and cover letters for the top matches, and refreshes the dashboard.
->
-> **What you do:** Open the dashboard each morning. Click Apply on jobs you want. Click Save for later. Click Skip on misses. The bot learns from your feedback.
->
-> **Files saved to:** `<MOUNT>\Job Bot\` — preferences, daily playbook, dashboard, master resume, project ledger.
->
-> **To tune anything:** Tell me in chat. I can change target companies, role keywords, score weights, or the schedule.
->
-> **First scheduled run:** {next weekday at user's chosen time}. Click "Run now" on the scheduled task in your Cowork sidebar tonight to pre-approve the tools the bot needs (WebSearch, WebFetch, bash, present_files).
+*Instructions for each run: replace the bracketed sections for the role. 250 words max. Open with the angle, not "I am writing to express interest." Active voice. No em dashes as separators. Skip "leverage," "robust," "transformative," "drove," and "spearheaded"; "it's not X, it's Y" framing; inflated verbs like "serves as" or "represents"; filler transitions like "Furthermore" and "Moreover"; and trailing "-ing" phrases like "highlighting…" or "underscoring…".*
 
 ---
 
-# APPENDIX A — `config/daily_brief_prompt.md` content
+[Date]
 
-```markdown
-# Daily Job Brief — {USER_NAME}
+[Hiring Manager Name, or "Hiring Team" if unknown]
+[Company]
+[City, State]
 
-You are running {USER_NAME}'s daily job-search workflow. Output: up to **3 jobs**, all sourced from official company career sites, all posted within the last 7 days. Quality over quantity. If fewer than 3 qualify, return only what qualifies. **Never pad.**
+Dear [Hiring Manager Name | Hiring Team],
 
-## 0. Mount the working folder
-Mount the parent folder so the bot can read config from `Job Bot` and write deliverables to the per-date folder in the same session. Call `mcp__cowork__request_cowork_directory` with `path: "{MOUNT_PARENT}"`. (If the scheduled task already mounted just `Job Bot`, call `request_cowork_directory` a second time with the parent path.)
-All paths below assume the parent folder is mounted.
+[**OPENING, 2 sentences.** The angle: why this role at this firm, anchored in something concrete from the posting or the firm's published work.]
 
-## 1. Load context (read all four files every run)
-- `Job Bot/config/preferences.md` — source of truth for targets, keywords, geo, scoring, dealbreakers.
-- `Job Bot/master/resume_master.md` — canonical resume body (summary, education, experience, skills).
-- `Job Bot/master/projects.md` — persistent project memory. Bot uses it to populate the Selected Projects section in tailored resumes and the bridge paragraph in cover letters. Pick 1–3 JD-relevant projects per role using the `fits:` tags. Never include a project that doesn't fit. Never publish a TBD line — skip the project instead.
-- `Job Bot/master/cover_letter_template.md` — cover letter structure with bracketed sections to replace per role.
-- The most recent `{MOUNT_PARENT}/daily job brief/<YYYY-MM-DD>/seen_jobs.json` to dedupe against the last 14 days. (Legacy location: `Job Bot/briefs/*_seen_jobs.json` — fall back to it if the new folder is empty.)
+[**EVIDENCE, 4–5 sentences.** Three impact examples that map to the posting's stated requirements, each leading with the outcome and its number.]
 
-## 2. Source rule (HARD)
-**Only company-owned career sites count as sources.** That means the company's official careers domain or their hosted ATS subdomain when it's clearly the company's own:
-- `careers.<company>.com`, `<company>.com/careers`
-- ATS-hosted: `wd1.myworkdaysite.com/recruiting/<company>`, `boards.greenhouse.io/<company>`, `<company>.icims.com`, `<company>.bamboohr.com`, `jobs.lever.co/<company>`, `<company>.ashbyhq.com`
-- Anything Workday/Greenhouse/iCIMS/Lever/Ashby that is the company's official posting page is fine.
+[**BRIDGE, 2–3 sentences.** Connect your differentiator (education, a recent project, unusual experience) to a specific requirement. Use the one project from `projects.md` whose `fits:` tags best match.]
 
-**Disqualified sources** (never use as the primary listing):
-- LinkedIn, Indeed, ZipRecruiter, Glassdoor, SimplyHired, Monster, any aggregator
-- Recruiter / staffing-firm postings
-- Reposts on third-party job boards
+[**CLOSE, 1–2 sentences.** Specific and direct. Name the practice or team if the posting does. State your location and availability.]
 
-Aggregators may be used **only** to find a candidate URL that links back to the company site, or to cross-check posting date. The final job in the brief must point to the company's own URL.
+Sincerely,
 
-**Approved discovery boards (use to find candidate roles, then hop to the company-direct URL before scoring or generating materials):**
-- **Built In** (regional sites: `builtin.com`, `builtincolorado.com`, `builtinnyc.com`, `builtinsf.com`, `builtinseattle.com`, etc.) — high-signal for local AI / tech roles. Workflow: query Built In for roles in your role-keyword categories, identify the hiring company, then resolve to the company's own careers URL before scoring. If the company-direct URL can't be found, drop the job.
-- The Built In URL never becomes the apply link. It's a discovery hop only.
+[Your Name]
+[Contact line from preferences.md]
+````
+<!-- /appendix -->
 
-## 3. Freshness rule (HARD)
-**Only roles posted within the last 7 calendar days qualify.** Compute "today" dynamically.
+## Appendix D — `config/daily_brief_prompt.md`
 
-Verify posting date in this priority order:
-1. JSON-LD `JobPosting.datePosted` in the page source (most reliable). Use WebFetch and look for `"datePosted"` in the HTML.
-2. Visible "Posted X days ago" text on the page.
-3. `og:updated_time` or similar meta tag.
-4. **Index fallback:** If the JD page itself has no date, fetch the company's open-positions index (typically `<careers-domain>/careers` or `<careers-domain>/jobs`) and check whether this role is listed there with a date or a "new" badge. If the role appears on today's index, treat the role as "active <today>" with today's date, marking `posted_date` as `"active <today>"` and `date_source` as `"index"`.
-5. If none of the above is present, **skip the job.** Don't guess.
+<!-- appendix: playbook_template.md -->
+````markdown
+# Daily Job Brief
 
-**Posting-removed detection (HARD).** Some aggregators (Built In, LinkedIn) keep closed listings indexed. Before scoring, check the page for any of:
-- `"Sorry, this job was removed"`
-- `"This job is no longer accepting applications"`
-- `"This position is no longer available"`
-- `"This job has expired"`
-- `"Applications closed"`
+You're running the daily job search for the person described in `config/preferences.md`. The goal is a short list they'll act on: up to 3 roles posted in the last 7 days on the employer's own site, each scored against their resume and paired with a tailored one-page resume and a cover letter. A thin day produces a short list; never fill it with weaker roles.
 
-If any match, drop with outcome `stale` and drop_reason `"posting explicitly closed (per page marker): <quoted snippet>"`. Never score a closed listing.
+Everything lives in the `Job Bot` folder attached to this task. Work from that folder; paths below are relative to it. If the folder is on the user's computer, build and check documents wherever you have python-docx and LibreOffice, then save the results back into the folder. The run is unattended: make reasonable calls, note them in the summary, and finish.
 
-## 4. Search workflow
+## 1. Load context
 
-### 4a. Named target companies (primary pass)
-For each target company in `preferences.md`:
+Read these files:
 
-**Step 0 — ATS auto-discovery.** If the company doesn't already have a verified careers domain in preferences.md, probe these URL patterns in order until one returns a real careers page (status 200 + at least one job listing):
-- `careers.<brand>.com`
-- `<brand>.com/careers`
-- `<brand>.com/jobs`
-- `boards.greenhouse.io/<brand>`
-- `job-boards.greenhouse.io/<brand>`
-- `jobs.lever.co/<brand>`
-- `<brand>.ashbyhq.com`
-- `careers-<brand>.icims.com`
-- `<brand>.icims.com`
-- `<brand>.wd1.myworkdaysite.com/recruiting/<brand>` and `wd1.myworkdaysite.com/recruiting/<brand>`
-- `<brand>.bamboohr.com/careers`
-- `apply.workable.com/<brand>`
-- `<brand>.workdayjobs.com`
+- `config/preferences.md`: thresholds, targets, keywords, title synonyms, geography, dealbreakers, stepping-stone companies, network contacts, and the dashboard URL.
+- `master/resume_master.md`: the only source of facts for tailored materials.
+- `master/projects.md`: projects to draw on, picked by their `fits:` tags.
+- `master/cover_letter_template.md`: cover letter structure and style rules.
+- `briefs/feedback.json` and `applications/applications.jsonl`.
 
-Cache the first hit in preferences.md as a verified careers domain ("verified: <url>") so future runs skip the probe.
+If the master resume is missing, stop and say so in the summary.
 
-**Step 0.5 — Search-spelling aliases.** If the company has an `also_search_as:` list in preferences.md, run queries against every alias. This is the fix for misspellings (e.g., "Unburdn" vs "Unburden").
-
-1. WebSearch: `site:<company-careers-domain> (<role-keyword-1> OR <role-keyword-2> OR ...) (<city> OR remote) {YEAR}`. Use the user's role keywords from preferences.md. Also run aliases.
-2. From the results, WebFetch each candidate listing page. Pull title, location, posting date, full JD body.
-3. Run posting-removed detection (Section 3). If closed, drop.
-4. Verify posting date via Section 3 priority chain (JSON-LD → text → og → index fallback).
-5. If date can't be verified, drop.
-6. If location fails the user's geo rule, drop.
-7. If dealbreakers triggered, drop.
-
-### 4b. Discovery board pass (after named targets)
-Use approved discovery boards to surface roles at companies NOT on the named target list. **Required hop:** find the company, then go to the company's own careers page before scoring.
-
-For each hit:
-1. Identify the company from the Built In page.
-2. WebSearch or visit the company's own careers page; find the same posting on the company-direct site.
-3. WebFetch the company-direct URL for date verification and JD content.
-4. If the company-direct URL can't be located within 2 queries, drop the job.
-
-The aggregator URL never becomes the apply link.
-
-### 4c. Quotas
-Cap WebSearch at ~30 queries total per run. Cap WebFetch at ~25 fetches.
-
-## 5. Score the survivors
-Apply the rubric in `preferences.md` (the **Title synonym map** in preferences applies for role-keyword scoring):
-- 35 pts role keyword overlap (uses title synonyms)
-- 20 pts experience fit
-- 15 pts location fit
-- 10 pts domain fit
-- 10 pts skill overlap
-- 10 pts network (named alumni at firm, prior contact, MBA cohort signal)
-
-**Hard floor: {FLOOR}. Star threshold: 85.** Anything below {FLOOR} normally gets dropped. Two exceptions:
-
-1. **Stepping-stone surfacing.** If the role is at a company in `preferences.md`'s `## Stepping-stone tier` list AND the score is **65–74**, surface it in the brief with a yellow **"Stepping stone"** badge instead of dropping. Log to ledger as `outcome: "stepping-stone"`. User decides whether to pursue. Anything below 65, even at a stepping-stone company, still drops.
-2. **Network override.** If the role scores 65–74 AND has a verified network connection worth full 10 Network points, the bot may surface it as `qualified` despite being below {FLOOR} with a note flagging the network override.
-
-Dedupe against `seen_jobs.json` from the last 14 days.
-
-Rank survivors by score. **Take the top 3 qualified, plus up to 2 stepping-stone roles.** Never pad qualified slots with stepping stones.
-
-## 6. Generate materials for each survivor
-**Output location:** `{MOUNT_PARENT}/daily job brief/YYYY-MM-DD/`
-Create this folder if it doesn't exist. All of today's deliverables live in this one date folder — flat, not nested per-company. Prefix each file with the company slug so a multi-job day stays readable.
-
-For each survivor, write:
-- `<company>_jd.txt` — full JD text + source URL + verified posting date
-- `<company>_score.md` — the scoring breakdown with line items
-- `<company>_cover_letter.docx` — tailored cover letter, 250 words max
-- `<company>_resume_tailored.docx` — user's resume reordered/keyword-tuned for this JD
-
-Cover letter: open with the angle, not "I am writing to express interest." Sign as the user's full name. 250 words max. Use `master/cover_letter_template.md` as the structure.
-
-Resume: start from `master/resume_master.md`. Reorder bullets to match JD priorities. Swap keyword variants where honest. Never fabricate. Drop the "Selected Projects" placeholder line if no JD-relevant project exists; never leave a TBD in the deliverable.
-
-### Resume — HARD one-page-FULL rule
-The tailored resume **must** be exactly one US Letter page AND must fill that page. Both conditions are non-negotiable:
-
-1. **Page count == 1.** No spillover.
-2. **Fill ratio ≥ 93%.** The last line of content must sit no more than ~0.6 inches above the bottom margin.
-
-After generating the .docx, run this verification block. Both checks must pass:
+The ledger, `briefs/all_jobs.jsonl`, grows every run, so don't read it whole. Print the last 14 days of it for repeat checks:
 
 ```bash
-libreoffice --headless --convert-to pdf <resume>.docx --outdir /tmp
-python3 << 'PY'
-from pypdf import PdfReader
-import pdfplumber
-r = PdfReader('/tmp/<resume>.pdf')
-pages = len(r.pages)
-with pdfplumber.open('/tmp/<resume>.pdf') as pdf:
-    p = pdf.pages[0]
-    max_y = max(c['bottom'] for c in p.chars)
-    fill = max_y / p.height
-print(f"pages={pages} fill={fill:.1%}")
-assert pages == 1, "OVERFLOW — too much content"
-assert fill >= 0.93, "UNDERFILL — too little content, expand"
+python3 - <<'PY'
+import datetime, json
+cutoff = (datetime.date.today() - datetime.timedelta(days=14)).isoformat()
+with open('briefs/all_jobs.jsonl', encoding='utf-8-sig') as f:
+    for line in f:
+        try:
+            row = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(row, dict) and str(row.get('scored_date') or '')[:10] >= cutoff:
+            print(str(row.get('scored_date'))[:10], row.get('outcome'), row.get('url'))
 PY
 ```
 
-If `pages > 1`: cut content using the tightening levers below.
-If `fill < 93%`: expand content using the expansion levers below.
+## 2. Sync the dashboard marks
 
-**Tightening levers (when overflowing), in order:**
-1. Collapse oldest 2–3 roles into a single "Earlier roles" line with one summary bullet.
-2. Cut bullets that don't earn keyword overlap with the target JD.
-3. Trim most recent role to 3 bullets, prior roles to 1–2.
-4. Move skills to a 3-line block with bold inline labels.
-5. Tighten margins to 0.5" left/right, 0.4" top/bottom. Body font 10pt.
-6. Combine Education + Certifications into one section.
+The dashboard stores the user's Applied, Save, and Skip clicks in its own database: a `feedback` collection with one document per job (`url`, `status`, `timestamp`, `day`). Read that collection from the dashboard artifact and merge it into `briefs/feedback.json`, keyed by URL, keeping whichever mark has the newer timestamp. A `status` of `null` means the user cleared the mark. If the dashboard's data isn't reachable, continue with feedback.json as it is.
 
-**Expansion levers (when underfilling), in order:**
-1. Add a 4th bullet to the two most recent roles, pulling JD-relevant wins.
-2. Expand the Summary from 3 to 4–5 lines with concrete numbers.
-3. Add a 4th line to Skills.
-4. Expand Selected Projects from 2 entries to 3, drawing from `master/projects.md`.
-5. Add an Honors line.
-6. Bump body font from 10pt to 10.5pt and margins to 0.55" all around.
+Then add an application row (schema in §7) for every job marked `applied` that isn't in `applications/applications.jsonl` yet. Use the mark's `day` as `applied_at`; it's the user's local date. For a mark without one, convert its `timestamp` to the user's time zone.
 
-Never shrink body font below 10pt, never grow above 11pt. Never shrink margins below 0.4" or expand above 0.7".
+## 3. What qualifies
 
-## 7. Write a static daily archive
-Write a self-contained HTML archive to `{MOUNT_PARENT}/daily job brief/YYYY-MM-DD/brief.html`. This is a permanent record of what the bot found that day. **Do not call `create_artifact`** — there is one persistent live artifact (see §8c).
+- **Employer source.** The apply link is the company's own careers page or its hosted applicant tracking system: Workday (`*.myworkdayjobs.com`, `*.myworkdaysite.com`), Greenhouse, Lever, Ashby, iCIMS, BambooHR, Workable, or SmartRecruiters. Job boards, aggregators, and staffing firms (LinkedIn, Indeed, Glassdoor, ZipRecruiter, Built In) can point you to a posting; resolve it to the employer's URL or drop it.
+- **Posted within 7 calendar days.** Find the date in this order: the posting's date in its applicant tracking system's job feed (§4), JSON-LD `datePosted` in the page source, visible "Posted X days ago" text, an `og:updated_time`-style meta tag, or the company's job index listing the role as new. For the index case, record `posted_date` as `"active YYYY-MM-DD"` and `date_source` as `"index"`. A posting with no verifiable date doesn't qualify.
+- **Still open.** Drop pages that say the job was removed, expired, or closed, or is no longer accepting applications. Quote the page's wording in `drop_reason`.
+- **Within the user's rules.** Geography, anti-keywords, dealbreakers, excluded industries, and the compensation floor from preferences.md. Apply the compensation floor only when the posting publishes a range.
 
-## 8. Persist the ledger (two files, every run)
+## 4. Search
 
-### 8a. Per-day dedupe file
-Write today's `seen_jobs.json` to `{MOUNT_PARENT}/daily job brief/YYYY-MM-DD/seen_jobs.json`. One entry per JD URL examined today.
+Budget: about 30 searches, 25 page fetches, and 12 minutes per run.
 
-### 8b. Aggregated ledger (powers the dashboard)
-**Append** every JD examined today as a single-line JSON object to `Job Bot/briefs/all_jobs.jsonl`. Schema:
+**Named targets first.** For each company in preferences.md:
+
+1. Use its `verified:` careers URL if one is recorded. Otherwise find the careers site, trying `careers.<brand>.com`, `<brand>.com/careers`, `boards.greenhouse.io/<brand>`, `job-boards.greenhouse.io/<brand>`, `jobs.lever.co/<brand>`, `jobs.ashbyhq.com/<brand>`, `<brand>.wd1.myworkdayjobs.com`, `careers-<brand>.icims.com`, `<brand>.bamboohr.com/careers`, and `apply.workable.com/<brand>`. Record the hit in preferences.md as `verified: <url>` so later runs skip the lookup.
+2. If the company hires through Greenhouse, Lever, or Ashby, fetch its public job feed instead of searching. One fetch lists every open role with a date:
+   - Greenhouse: `https://boards-api.greenhouse.io/v1/boards/<board>/jobs`, dated by `first_published` when the feed has it, otherwise `updated_at`.
+   - Lever: `https://api.lever.co/v0/postings/<company>?mode=json`, dated by `createdAt` (milliseconds since 1970).
+   - Ashby: `https://api.ashbyhq.com/posting-api/job-board/<board>`, dated by `publishedAt`.
+   
+   Record `date_source` as `"feed"`. For other sites, search the careers site for the role keywords plus the user's location or "remote", and run the same search for any `also_search_as:` names.
+3. Fetch each candidate posting for its title, location, and full description, confirm the date, then apply §3.
+
+When the list is longer than one run's budget, start with stepping-stone and network companies, then rotate through the rest so every company gets checked every few days. Record the companies you searched in today's `seen_jobs.json`, and use the last few days of those files to pick up where the rotation left off.
+
+**Widening.** If fewer than 3 roles from named targets qualify, search discovery boards (Built In and its regional sites, such as builtincolorado.com) for the role keywords. Resolve each hit to the employer's own posting within 2 lookups or drop it. Widened roles meet the same threshold and rules.
+
+## 5. Score
+
+Score each surviving posting from 0 to 100 using the rubric and thresholds in preferences.md. The defaults: role keyword overlap 35 (title synonyms count), experience fit 20, location fit 15, domain fit 10, skill overlap 10, network 10.
+
+Give every posting you examine one outcome:
+
+- `qualified`: at or above the surface threshold. A posting at a company where the user has a named network contact (full network points) also qualifies from 65 up, with `network_override: true`.
+- `stepping-stone`: at a stepping-stone company, 65 or more but under the threshold.
+- `below-floor`: scored, but under the threshold.
+- `off-fit`: not one of the target roles, outside the user's geography, or caught by an anti-keyword or an excluded industry.
+- `dealbreaker`: hits a dealbreaker or the compensation floor.
+- `stale`: older than 7 days, undated, or closed.
+- `dedup`: already in the ledger within the last 14 days, or already marked `skipped` or `applied`. When the user asks for a re-run after changing their preferences, re-score postings from the last 7 days that are still open instead of marking them `dedup`.
+
+Surface the top 3 qualified roles plus up to 2 stepping stones. When feedback shows 3 or more skips that share a title pattern or company, point it out in the summary and suggest an anti-keyword.
+
+## 6. Materials
+
+For each surfaced role, write these files into `daily/YYYY-MM-DD/` (today's date). Name them with a slug of company and role in lowercase with hyphens, such as `slalom_senior-consultant`:
+
+- `<slug>_jd.txt`: the full posting text, its URL, and the verified posting date.
+- `<slug>_score.md`: the score, line by line.
+- `<slug>_cover_letter.docx`: 250 words or fewer, following `master/cover_letter_template.md`, signed with the user's name and the contact line from preferences.md.
+- `<slug>_resume.docx`: the tailored resume.
+
+**Tailoring.** Start from `master/resume_master.md`. Reorder and rephrase to match the posting's priorities, use its keywords where the resume supports them, and pick 1–3 projects from `projects.md` by their `fits:` tags. Skip projects tagged `exclude_from_outputs: true` or with TBD details. Every fact, number, title, and credential comes from the master resume or the project ledger, because the resume goes out under the user's name. When you use a claim a project lists under "Verify before use", name it in the summary so the user confirms it before sending.
+
+**One full page.** The resume must be exactly one US Letter page and fill at least 93% of it. Convert it to PDF and measure:
+
+```bash
+mkdir -p /tmp/jobbot && soffice --headless --convert-to pdf --outdir /tmp/jobbot "<slug>_resume.docx"
+python3 - /tmp/jobbot/<slug>_resume.pdf <<'PY'
+import sys, pdfplumber
+with pdfplumber.open(sys.argv[1]) as pdf:
+    first = pdf.pages[0]
+    bottom = max((c["bottom"] for c in first.chars), default=0)
+    print(f"pages={len(pdf.pages)} fill={bottom / first.height:.1%}")
+PY
+```
+
+- Over one page: collapse the oldest roles into one "Earlier roles" line, cut bullets that don't match the posting, keep 3 bullets on the latest role and 1–2 on earlier ones, compress skills into 3 labeled lines, set margins to 0.5" on the sides and 0.4" top and bottom at 10pt, and merge Education with Certifications.
+- Under 93%: add a relevant bullet to each of the two latest roles, grow the summary to 4–5 lines with numbers, add a skills line, add a third project, add an honors line, then move to 10.5pt with 0.55" margins.
+- Keep body text between 10 and 11pt and margins between 0.4" and 0.7".
+
+## 7. Records
+
+**Ledger.** Append one row per posting examined today, surfaced or dropped, to `briefs/all_jobs.jsonl`. Each row is a single line of JSON (Python's `json.dumps(row)` writes one); add lines and never rewrite earlier ones.
 
 ```json
-{
-  "url": "https://careers.example.com/...",
-  "company": "Example Co",
-  "title": "Senior Consultant",
-  "location": "Denver, CO",
-  "location_type": "Hybrid Denver",
-  "posted_date": "2026-05-08",
-  "date_source": "json-ld",
-  "scored_date": "2026-05-10",
-  "score": 87,
-  "score_breakdown": {"role":33,"experience":17,"location":15,"domain":10,"skill":7,"network":5},
-  "outcome": "qualified",
-  "drop_reason": null,
-  "stepping_stone": false,
-  "network_override": false,
-  "why_fits": "Two-sentence rationale.",
-  "skills_mentioned": ["Python", "LLMs", "Agile"],
-  "comp_low": 130000,
-  "comp_high": 165000,
-  "tailored_files": "{MOUNT_PARENT}/daily job brief/2026-05-10/"
-}
+{"url": "https://careers.example.com/jobs/123", "company": "Example Co", "title": "Senior Consultant", "location": "Denver, CO", "location_type": "Hybrid Denver", "posted_date": "2026-10-26", "date_source": "json-ld", "scored_date": "2026-10-27", "score": 87, "score_breakdown": {"role": 33, "experience": 17, "location": 15, "domain": 10, "skill": 7, "network": 5}, "outcome": "qualified", "drop_reason": null, "stepping_stone": false, "network_override": false, "why_fits": "Two sentences on the fit.", "skills_mentioned": ["SQL", "FP&A"], "comp_low": 130000, "comp_high": 165000, "tailored_files": "daily/2026-10-27/", "resume_file": "example-co_senior-consultant_resume.docx", "cover_letter_file": "example-co_senior-consultant_cover_letter.docx"}
 ```
 
-Field rules:
-- `outcome`: `qualified` | `stepping-stone` | `stale` | `off-fit` | `dealbreaker` | `dedup`
-- `date_source`: `json-ld` | `text` | `og` | `index` | `null`
-- `location_type`: bucket into one of `<City>`, `Remote-US`, `Hybrid <City>`, `Relocation: <city>`, `Unknown`
+- `outcome`: `qualified`, `stepping-stone`, `below-floor`, `off-fit`, `dealbreaker`, `stale`, or `dedup` (defined in §5).
+- `date_source`: `feed`, `json-ld`, `text`, `og`, `index`, or `null`.
+- `location_type`: `<City>`, `Remote-US`, `Hybrid <City>`, `Relocation: <City>`, or `Unknown`.
+- `skills_mentioned` is a list of strings.
+- The materials fields (`tailored_files`, `resume_file`, `cover_letter_file`) apply to surfaced roles only.
 
-**Append** with `>>` redirection — never overwrite.
+**Seen list.** Write `daily/YYYY-MM-DD/seen_jobs.json` with every URL examined and the companies searched today.
 
-### 8c. FINAL STEP — refresh the dashboard (always do this last)
-**This is the last action of every complete bot workflow. No exceptions.**
+**Applications.** `applications/applications.jsonl` holds one JSON line per application:
 
-1. **Bake.** Run the bake script:
-   ```bash
-   python3 "{MOUNT}/Job Bot/dashboard/bake.py"
-   ```
-
-2. **Update the artifact.** Call `mcp__cowork__update_artifact` with:
-   - `id: "{ARTIFACT_ID}"` (single canonical artifact ID — never create a new one)
-   - `html_path: "{MOUNT}/Job Bot/dashboard/dashboard.html"`
-   - `mcp_tools: ["mcp__workspace__bash", "mcp__cowork__present_files"]`
-   - `update_summary`: one-line description of today's run
-
-3. **Verify.** Re-read the first 5 lines of `dashboard.html` and confirm the baked-data script tag contains today's `scored_date` entries.
-
-**Never call `create_artifact`** — exactly one persistent artifact, updated not recreated.
-
-## 9. Notify
-End with a one-paragraph chat summary: count of qualified jobs, top company + score if any, count of postings examined, count dropped on freshness vs. fit. Link the artifact.
-
-**Materials path callout (Ryan-fix):** explicitly include this line in the chat summary: "Tailored resume + cover letter saved to: `{MOUNT_PARENT}/daily job brief/YYYY-MM-DD/`."
-
-## 10. Gmail application-status scan (optional — runs after §1 if Gmail MCP is connected)
-
-After loading context, scan Gmail for responses on existing applications. Keeps the dashboard's Applications panel current.
-
-### 10a. Load applications
-Read `Job Bot/applications/applications.jsonl`. Filter to entries where `application_status` is in `[submitted, acknowledged, screening, assessment, interview]`.
-
-### 10b. Search Gmail per active application
-For each active application, call the Gmail MCP `search_threads` tool with:
-```
-(from:(<company-domain> OR @myworkday.com OR @workday.com OR @greenhouse.io OR @lever.co OR @icims.com) OR subject:"<company>" OR subject:"<role-title-keyword>") newer_than:90d
+```json
+{"company": "Example Co", "title": "Senior Consultant", "url": "https://careers.example.com/jobs/123", "applied_at": "2026-10-28", "application_status": "submitted", "status_history": [{"status": "submitted", "at": "2026-10-28"}], "score_at_apply": 87, "tailored_files": "daily/2026-10-27/", "last_email_at": null, "last_email_subject": null, "last_email_thread_id": null}
 ```
 
-### 10c. Read and classify
-For each thread:
-1. Call `get_thread` to read messages.
-2. Take the MOST RECENT message.
-3. Apply patterns in `Job Bot/config/email_classifier_rules.md` (first match wins).
-4. If classification yields a new status, update the application's `application_status` and append to `status_history`.
-5. Update `last_email_at`, `last_email_subject`, `last_email_thread_id`.
+Statuses: `submitted`, `acknowledged`, `screening`, `assessment`, `interview`, `offer`, `accepted`, `declined`, `rejected`, `ghosted`, `withdrew`. To change a row, rewrite the file with that row updated.
 
-### 10d. Ghosting detection
-For applications `submitted` and `applied_at > 30 days ago` with no email activity, flag `ghosted`. Do NOT auto-set — surface in chat summary for user confirmation.
+## 8. Email check (when Gmail is connected)
 
-### 10e. Privacy
-Bot does NOT send/reply/archive/delete emails. Only reads metadata + most-recent message for classification.
+For each application that is submitted, acknowledged, screening, assessment, interview, or ghosted, search the last 90 days of Gmail for mail from the company's domain or an applicant-tracking sender (myworkday.com, greenhouse.io, lever.co, icims.com, ashbyhq.com), or with the company or role in the subject. Applicant-tracking senders mail for many employers, so count a message only when its sender domain, subject, or body names this company or this role. Read the newest message that does and set the status:
 
-## Failure modes
-- Career page blocks WebFetch entirely → try the careers index page; if also blocked, skip that company today and note in the brief.
-- WebSearch rate-limited → reduce queries to highest-priority targets; note in brief.
-- 0 qualifying jobs → produce the brief anyway with "Quiet day" framing. Don't lower the bar.
-- Resume file missing → halt and post a chat message asking user to re-upload.
+- `rejected`: "not moving forward", "other candidates", "decided not to proceed", "position has been filled".
+- `acknowledged`: "received your application", "thank you for applying".
+- `screening` or `interview`: a request to schedule a call or interview, a calendar invite, "next steps".
+- `assessment`: a test, case, or take-home assignment.
+- `offer`: an offer or offer letter.
 
-## Constraints
-- Never fabricate JDs, posting dates, companies, or news.
-- Never use aggregator URLs as the apply link.
-- Never click apply or submit on the user's behalf.
-- Never surface a 4th job to look generous.
+Append each change to `status_history` and update the `last_email_*` fields. Mark an application `ghosted` after 30 days with no reply since `applied_at`; a later matching email moves it to that email's status. This step only reads mail. It never sends, labels, archives, or deletes anything.
 
-```
+## 9. Refresh the dashboard
 
-# APPENDIX B — `dashboard/bake.py` content
+1. Run `python3 dashboard/bake.py`. It rebuilds `dashboard/dashboard.html` from the files above and exits with an error if the page is incomplete or missing its data block.
+2. Confirm the page's data block now includes today's `scored_date`.
+3. Update the dashboard artifact at the URL in preferences.md: read it, then publish `dashboard/dashboard.html` to that same URL and leave its capabilities as they are. If the update fails, report it in the summary instead of publishing a new dashboard.
+4. Save a copy of the baked page as `daily/YYYY-MM-DD/brief.html`, the day's permanent record.
 
-```python
+## 10. Summary
+
+End with one short paragraph: roles surfaced (top company and score), postings examined, how many dropped for freshness versus fit, and anything that needs the user, such as a blocked careers site, a skip pattern, a claim to verify, or a missing resume. Close with "Materials: `Job Bot/daily/YYYY-MM-DD/`" and the dashboard link.
+
+## When things go wrong
+
+- A careers site blocks fetching: try its job feed or job index. If those fail too, skip the company today and list it in the summary.
+- Searches get rate-limited: spend what's left on stepping-stone and network companies.
+- Nothing qualifies: update the ledger and dashboard anyway and call it a quiet day. Keep the threshold where the user set it.
+````
+<!-- /appendix -->
+
+## Appendix E — scheduled task prompt (`config/scheduled_task_prompt.md`)
+
+<!-- appendix: scheduled_task_prompt.md -->
+````markdown
+Run {FIRST_NAME}'s Job Bot daily brief.
+
+The `Job Bot` folder is attached to this task. Read `Job Bot/config/daily_brief_prompt.md` and follow it from start to finish: search, scoring, materials, records, the dashboard update, and the closing summary.
+
+Dashboard: {DASHBOARD_URL}
+````
+<!-- /appendix -->
+
+## Appendix F — `dashboard/bake.py`
+
+<!-- appendix: bake.py -->
+````python
 #!/usr/bin/env python3
-"""Bake the current ledger + feedback + applications into the dashboard HTML.
-Run after any change to all_jobs.jsonl, applications.jsonl, or feedback.json,
-then call update_artifact.
-Idempotent — re-running just replaces the previous baked block.
-"""
-import json, re, datetime, pathlib
+"""Embed the Job Bot ledger, feedback, and applications in dashboard.html.
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent  # Job Bot/
+Lives at Job Bot/dashboard/bake.py. Reads:
+  briefs/all_jobs.jsonl            every posting the daily runs examined
+  briefs/feedback.json             Applied / Save / Skip marks, keyed by job URL
+  applications/applications.jsonl  submitted applications and their status
+  config/preferences.md            score floor and star threshold
+
+Writes the result into the <script id="baked-data"> block of dashboard/dashboard.html.
+Safe to re-run; each run replaces the previous block.
+
+The page carries the last 31 days in detail, every older role that has a mark, and
+lifetime totals, so it stays about the same size all semester. Exits non-zero when
+dashboard.html is incomplete, so a broken page never gets published with fresh data.
+"""
+import datetime
+import json
+import math
+import os
+import pathlib
+import re
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent  # the Job Bot folder
 HTML = ROOT / 'dashboard' / 'dashboard.html'
 LEDGER = ROOT / 'briefs' / 'all_jobs.jsonl'
-APPLICATIONS = ROOT / 'applications' / 'applications.jsonl'
 FEEDBACK = ROOT / 'briefs' / 'feedback.json'
+APPLICATIONS = ROOT / 'applications' / 'applications.jsonl'
+PREFERENCES = ROOT / 'config' / 'preferences.md'
+
+DEFAULT_FLOOR, DEFAULT_STAR = 75, 85
+WINDOW_DAYS = 31                       # covers the dashboard's 30-day views
+SURFACED = {'qualified', 'stepping-stone'}
+END_MARKER = '<!-- job-bot:end -->'
+BLOCK = re.compile(r'(<script id="baked-data" type="application/json">)(.*?)(</script>)', re.DOTALL)
 
 
-def load_jsonl(path):
-    rows = []
+def warn(message):
+    print(f'warning: {message}', file=sys.stderr)
+
+
+def finite_or_none(text):
+    value = float(text)
+    return value if math.isfinite(value) else None
+
+
+# NaN, Infinity, and overflowing numbers become null; browsers reject them in JSON.
+DECODER = json.JSONDecoder(parse_constant=lambda _: None, parse_float=finite_or_none)
+
+
+def load_records(path):
+    """Read JSON objects one after another. Tolerates pretty-printed rows and skips junk."""
     if not path.exists():
-        return rows
-    for line in path.read_text(encoding='utf-8').splitlines():
-        line = line.strip()
-        if not line:
-            continue
+        return []
+    text = path.read_text(encoding='utf-8-sig')
+    rows, i, end = [], 0, len(text)
+    while i < end:
+        while i < end and text[i].isspace():
+            i += 1
+        if i >= end:
+            break
         try:
-            rows.append(json.loads(line))
+            obj, i = DECODER.raw_decode(text, i)
         except json.JSONDecodeError as e:
-            print(f'skip bad line in {path.name}: {e}')
+            warn(f'skipped unreadable text at line {text.count(chr(10), 0, i) + 1} of {path.name}: {e.msg}')
+            newline = text.find('\n', i)
+            if newline == -1:
+                break
+            i = newline + 1
+            continue
+        if isinstance(obj, dict):
+            rows.append(obj)
+        else:
+            warn(f'skipped a non-object entry in {path.name}')
     return rows
 
 
-jobs = load_jsonl(LEDGER)
-applications = load_jsonl(APPLICATIONS)
-
-feedback = {}
-if FEEDBACK.exists():
+def load_feedback(path):
+    if not path.exists():
+        return {}
     try:
-        feedback = json.loads(FEEDBACK.read_text(encoding='utf-8') or '{}')
-    except Exception:
-        pass
+        data = DECODER.decode(path.read_text(encoding='utf-8-sig').strip() or '{}')
+    except json.JSONDecodeError as e:
+        warn(f'{path.name} is not valid JSON, baking without feedback: {e}')
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {url: mark for url, mark in data.items() if isinstance(mark, dict)}
 
-baked = {
-    'generated_at': datetime.datetime.now().isoformat(timespec='seconds'),
-    'jobs': jobs,
-    'applications': applications,
-    'feedback': feedback,
-}
 
-# Encode as JSON. Escape </script> defensively so the JSON can't break out.
-payload = json.dumps(baked, ensure_ascii=False).replace('</', '<\\/')
-script_tag = f'<script id="baked-data" type="application/json">{payload}</script>\n'
+def read_threshold(text, label, default):
+    # Matches "Surface threshold: 75", "**Surface threshold:** 75", "Surface threshold: **75**"
+    m = re.search(re.escape(label) + r'\W{0,6}(\d{2,3})\b', text, re.IGNORECASE)
+    return int(m.group(1)) if m else default
 
-html = HTML.read_text(encoding='utf-8')
-# Strip any previous baked-data block
-html = re.sub(r'<script id="baked-data"[^>]*>.*?</script>\n?', '', html, flags=re.DOTALL)
-# Inject the new block right after the opening <meta>
-html = html.replace('<meta charset="utf-8">\n', '<meta charset="utf-8">\n' + script_tag, 1)
-HTML.write_text(html, encoding='utf-8')
 
-print(f'baked {len(jobs)} jobs, {len(applications)} applications, '
-      f'{len(feedback)} feedback entries into {HTML.name}')
+def day(row):
+    return str(row.get('scored_date') or '')[:10]
 
-```
 
-# APPENDIX C — `dashboard/dashboard.html` content
+def text_field(row, key):
+    value = row.get(key)
+    return value if isinstance(value, str) and value else None
 
-```html
-<meta charset="utf-8">
+
+def latest_per_day(jobs):
+    """A posting re-scored on the same day keeps only its last row."""
+    last = {}
+    for n, j in enumerate(jobs):
+        if text_field(j, 'url'):
+            last[(j['url'], day(j))] = n
+    return [j for n, j in enumerate(jobs) if not text_field(j, 'url') or last[(j['url'], day(j))] == n]
+
+
+def main():
+    prefs = PREFERENCES.read_text(encoding='utf-8-sig') if PREFERENCES.exists() else ''
+    jobs = latest_per_day(load_records(LEDGER))
+    applications = load_records(APPLICATIONS)
+    feedback = load_feedback(FEEDBACK)
+
+    cutoff = (datetime.date.today() - datetime.timedelta(days=WINDOW_DAYS)).isoformat()
+    kept = []
+    for j in jobs:
+        surfaced = text_field(j, 'outcome') in SURFACED
+        if day(j) >= cutoff:
+            # Dropped rows only feed the daily counts, so they travel as date and outcome.
+            kept.append(j if surfaced else {'scored_date': j.get('scored_date'), 'outcome': text_field(j, 'outcome')})
+        elif surfaced and text_field(j, 'url') in feedback:
+            kept.append(j)  # older roles the user marked stay visible in the activity log
+
+    days = sorted({day(j) for j in jobs if day(j)})
+    baked = {
+        'generated_at': datetime.datetime.now().astimezone().isoformat(timespec='seconds'),
+        'floor': read_threshold(prefs, 'Surface threshold', DEFAULT_FLOOR),
+        'star': read_threshold(prefs, 'Star threshold', DEFAULT_STAR),
+        'lifetime': {
+            'scanned': len(jobs),
+            'qualified': len({text_field(j, 'url') for j in jobs if text_field(j, 'outcome') == 'qualified'} - {None}),
+            'first_date': days[0] if days else None,
+        },
+        'jobs': kept,
+        'applications': applications,
+        'feedback': feedback,
+    }
+
+    # ASCII-only JSON, with <, >, & escaped, can't close the script tag or trip on odd characters.
+    payload = (json.dumps(baked, ensure_ascii=True)
+               .replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026'))
+
+    html = HTML.read_text(encoding='utf-8-sig')
+    if not html.rstrip().endswith(END_MARKER):
+        sys.exit(f'error: {HTML} is incomplete (it should end with {END_MARKER}). '
+                 'Restore it from Appendix G of the Job Bot setup prompt.')
+    if not BLOCK.search(html):
+        sys.exit(f'error: {HTML} has no <script id="baked-data" type="application/json"> block. '
+                 'Restore it from Appendix G of the Job Bot setup prompt.')
+    # A function replacement keeps re.sub from reading backslashes in the JSON as escapes.
+    html = BLOCK.sub(lambda m: m.group(1) + payload + m.group(3), html, count=1)
+
+    # Write to a temp file, then swap it in, so an interrupted bake never leaves a half-written page.
+    tmp = HTML.with_name(HTML.name + '.tmp')
+    try:
+        with open(tmp, 'w', encoding='utf-8', newline='') as f:
+            f.write(html)
+        os.replace(tmp, HTML)
+    finally:
+        if tmp.exists():
+            tmp.unlink()
+
+    print(f'baked {len(kept)} of {len(jobs)} ledger rows, {len(applications)} applications, '
+          f'{len(feedback)} marks (floor {baked["floor"]}, star {baked["star"]}); '
+          f'{HTML.name} is {len(html) // 1024} KB')
+
+
+if __name__ == '__main__':
+    main()
+````
+<!-- /appendix -->
+
+## Appendix G — `dashboard/dashboard.html`
+
+<!-- appendix: dashboard.html -->
+````html
+<title>{FIRST_NAME}'s Job Bot</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<script id="baked-data" type="application/json">{}</script>
 <style>
-  :root { color-scheme: light; --ink:#111; --paper:#fff; --navy:#1f3a5f; --yellow:#f5c518; --green:#2f8a3c; --red:#c0392b; --grey:#666; --line:#e6e6e6; --bg:#fafafa; }
-  *,*::before,*::after { box-sizing: border-box; }
-  body { margin:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color:var(--ink); background:var(--bg); font-size:14px; line-height:1.45; }
-  .wrap { max-width:1200px; margin:0 auto; padding:18px; }
-  header { display:flex; justify-content:space-between; align-items:baseline; padding-bottom:12px; border-bottom:2px solid var(--ink); margin-bottom:18px; }
-  header h1 { margin:0; font-size:22px; letter-spacing:-0.01em; }
-  header .meta { color:var(--grey); font-size:12px; }
-  .kpi-row { display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:18px; }
-  .kpi { background:var(--paper); border:1px solid var(--line); padding:14px 16px; border-radius:6px; }
-  .kpi .label { font-size:11px; text-transform:uppercase; color:var(--grey); letter-spacing:0.04em; }
-  .kpi .value { font-size:30px; font-weight:600; line-height:1.1; margin-top:6px; color:var(--ink); }
-  .kpi .sub { font-size:11px; color:var(--grey); margin-top:4px; }
-  .panel { background:var(--paper); border:1px solid var(--line); border-radius:6px; padding:14px 16px; margin-bottom:14px; }
-  .panel h2 { margin:0 0 10px 0; font-size:14px; text-transform:uppercase; letter-spacing:0.04em; color:var(--navy); }
-  .grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
-  .chart-wrap { position:relative; height:240px; }
-  table { width:100%; border-collapse:collapse; font-size:13px; }
-  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
-  th { font-size:11px; text-transform:uppercase; color:var(--grey); letter-spacing:0.04em; font-weight:600; }
-  td.score { font-weight:600; }
-  .chip { display:inline-block; padding:2px 7px; border-radius:10px; font-size:11px; font-weight:600; }
-  .chip-green { background:#e6f4ea; color:var(--green); }
-  .chip-yellow { background:#fff7d1; color:#8a6d00; }
-  .chip-grey { background:#eee; color:var(--grey); }
-  .chip-navy { background:#e6ecf5; color:var(--navy); }
-  .btn { font:inherit; cursor:pointer; padding:5px 10px; border-radius:4px; border:1px solid var(--ink); background:var(--paper); color:var(--ink); margin-right:4px; font-size:12px; display:inline-block; text-align:center; text-decoration:none; line-height:1.3; }
-  .btn:hover { background:var(--ink); color:var(--paper); text-decoration:none; }
-  a.btn { color:var(--ink); }
-  a.btn:hover { color:var(--paper); }
-  .btn.applied { background:var(--green); color:var(--paper); border-color:var(--green); }
-  .btn.skipped { background:var(--grey); color:var(--paper); border-color:var(--grey); }
-  .btn.saved { background:var(--yellow); color:var(--ink); border-color:var(--yellow); }
-  a.apply-link { color:var(--navy); text-decoration:none; font-weight:600; }
-  a.apply-link:hover { text-decoration:underline; }
-  .empty { text-align:center; padding:32px 20px; color:var(--grey); }
-  .empty h2 { color:var(--navy); margin-bottom:6px; }
-  .empty .rules { background:var(--bg); border:1px dashed var(--line); border-radius:6px; padding:14px; margin-top:18px; text-align:left; max-width:560px; margin-left:auto; margin-right:auto; }
-  .tabs { display:flex; gap:0; border-bottom:1px solid var(--line); margin-bottom:10px; }
-  .tab { padding:8px 14px; cursor:pointer; border-bottom:2px solid transparent; font-size:12px; text-transform:uppercase; letter-spacing:0.04em; color:var(--grey); }
-  .tab.active { color:var(--ink); border-bottom-color:var(--yellow); font-weight:600; }
-  .pulse { display:inline-block; width:8px; height:8px; background:var(--green); border-radius:50%; margin-right:6px; vertical-align:middle; animation:pulse 1.6s ease-in-out infinite; }
-  @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.3 } }
-  .footer { text-align:center; color:var(--grey); font-size:11px; padding:18px 0; }
-  .small-link { color:var(--grey); font-size:11px; text-decoration:underline; cursor:pointer; }
-  .truncate { max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .err { background:#fff4f0; border:1px solid #f3c2b3; color:#8a3010; padding:12px 14px; border-radius:6px; margin-bottom:14px; font-size:13px; }
-  /* Today's brief cards */
-  .today-card { display:grid; grid-template-columns: 80px 1fr auto; gap:14px; padding:14px; border:1px solid var(--line); border-radius:6px; margin-bottom:10px; background:#fff; align-items:center; }
-  .today-card.top { border-left:6px solid var(--yellow); }
-  .today-score { font-size:28px; font-weight:700; text-align:center; padding:8px 0; border-radius:6px; }
-  .today-score.green { background:#e6f4ea; color:var(--green); }
-  .today-score.yellow { background:#fff7d1; color:#8a6d00; }
-  .today-meta { color:var(--grey); font-size:12px; margin-top:3px; }
-  .today-why { font-size:13px; color:var(--ink); margin-top:6px; line-height:1.4; }
-  .today-actions { display:flex; flex-direction:column; gap:4px; min-width:140px; }
-  .today-actions .btn { width:100%; text-align:center; }
-  .quiet-day { padding:18px; text-align:center; background:var(--bg); border-radius:6px; color:var(--grey); }
-  .quiet-day strong { color:var(--ink); display:block; margin-bottom:4px; }
-  /* Application Pipeline */
-  .app-metrics { display:grid; grid-template-columns: repeat(6, 1fr); gap:8px; margin-bottom:14px; }
-  .app-metrics .tile { background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:10px 8px; text-align:center; }
-  .app-metrics .tile strong { display:block; font-size:22px; line-height:1.1; }
-  .app-metrics .tile .l { display:block; font-size:10px; text-transform:uppercase; color:var(--grey); letter-spacing:0.04em; margin-top:4px; }
-  .app-metrics .tile.submitted strong { color:var(--ink); }
-  .app-metrics .tile.acknowledged strong { color:#8a6d00; }
-  .app-metrics .tile.in-progress strong { color:var(--green); }
-  .app-metrics .tile.rejected strong { color:var(--red); }
-  .app-metrics .tile.offer strong { color:var(--yellow); background:none; }
-  .app-metrics .tile.rate strong { color:var(--navy); }
-  .status-chip { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; text-transform:capitalize; }
-  .status-chip.submitted { background:#e6ecf5; color:var(--navy); }
-  .status-chip.acknowledged { background:#fff7d1; color:#8a6d00; }
-  .status-chip.interviewing { background:#e6f4ea; color:var(--green); }
-  .status-chip.rejected { background:#fdecec; color:var(--red); }
-  .status-chip.offer { background:#fff7d1; color:#8a6d00; border:1px solid var(--yellow); }
-  .status-chip.withdrew { background:#eee; color:var(--grey); }
-  details.app-row { border:1px solid var(--line); border-radius:6px; margin-bottom:6px; background:var(--paper); }
-  details.app-row[open] { border-color:var(--navy); }
-  details.app-row summary { padding:10px 12px; cursor:pointer; display:grid; grid-template-columns: 90px 1fr 60px 110px 1fr; gap:12px; align-items:center; list-style:none; font-size:13px; }
-  details.app-row summary::-webkit-details-marker { display:none; }
-  details.app-row summary:hover { background:var(--bg); }
-  .app-history { padding:10px 14px 14px 14px; border-top:1px solid var(--line); font-size:12px; color:var(--grey); }
-  .app-history-row { display:grid; grid-template-columns: 110px 110px 1fr; gap:10px; padding:4px 0; }
-  .app-history-row.notes { color:var(--ink); padding-top:8px; border-top:1px dashed var(--line); margin-top:6px; }
-  /* Today's counts strip */
-  .today-counts { display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:14px; padding:12px 14px; background:var(--bg); border:1px solid var(--line); border-radius:6px; }
-  .today-counts .tc { text-align:center; }
-  .today-counts .tc .n { font-size:24px; font-weight:700; color:var(--ink); display:block; line-height:1.1; }
-  .today-counts .tc .lbl { font-size:11px; text-transform:uppercase; color:var(--grey); letter-spacing:0.04em; margin-top:4px; display:block; }
-  .today-counts .tc.disqualified .n { color:var(--grey); }
-  .today-counts .tc.qualified .n { color:var(--green); }
-  .today-counts .tc.applied .n { color:var(--navy); }
-  .today-counts .threshold-note { grid-column: 1 / -1; text-align:center; font-size:11px; color:var(--grey); padding-top:6px; border-top:1px dashed var(--line); margin-top:4px; }
+  /* Layout: one centered column. Today's brief and the KPIs sit above history, charts, and trackers. */
+  :root {
+    --bg: #f6f7f9; --paper: #ffffff; --ink: #14171c; --muted: #5d6573; --line: #e2e5ea;
+    --navy: #1f3a5f; --navy-soft: #e7edf6;
+    --yellow: #f5c518; --yellow-soft: #fff6cc; --yellow-ink: #6f5600; --on-yellow: #14171c;
+    --green: #256b30; --green-soft: #e4f3e7;
+    --red: #a8382c; --red-soft: #fbeaea;
+    --grey-soft: #eef0f3;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1216; --paper: #171b21; --ink: #e7eaef; --muted: #9ba4b1; --line: #2a3039;
+      --navy: #93b4e0; --navy-soft: #1b283a;
+      --yellow: #f5c518; --yellow-soft: #352c0c; --yellow-ink: #f2d35f; --on-yellow: #14171c;
+      --green: #74c983; --green-soft: #15301b;
+      --red: #f0958a; --red-soft: #3a1d1a;
+      --grey-soft: #222831;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1216; --paper: #171b21; --ink: #e7eaef; --muted: #9ba4b1; --line: #2a3039;
+    --navy: #93b4e0; --navy-soft: #1b283a;
+    --yellow: #f5c518; --yellow-soft: #352c0c; --yellow-ink: #f2d35f; --on-yellow: #14171c;
+    --green: #74c983; --green-soft: #15301b;
+    --red: #f0958a; --red-soft: #3a1d1a;
+    --grey-soft: #222831;
+    color-scheme: dark;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; font-family: var(--font); color: var(--ink); background: var(--bg); font-size: 14px; line-height: 1.45; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding-block: 18px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 14px; }
+  .wrap-inner { display: grid; gap: 14px; min-width: 0; }
+  code { font-family: var(--mono); font-size: 12px; }
+  a { color: var(--navy); }
+  header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 14px; padding-bottom: 12px; border-bottom: 2px solid var(--ink); }
+  header h1 { margin: 0; font-size: 22px; letter-spacing: -0.01em; text-wrap: balance; }
+  .meta { color: var(--muted); font-size: 12px; }
+  .pulse { display: inline-block; width: 8px; height: 8px; background: var(--green); border-radius: 50%; margin-right: 6px; vertical-align: middle; animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.3 } }
+  @media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
+
+  .panel { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; min-width: 0; }
+  .panel h2 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--navy); }
+  .kpi-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .kpi { background: var(--paper); border: 1px solid var(--line); padding: 14px 16px; border-radius: 6px; min-width: 0; }
+  .kpi .label { font-size: 11px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.05em; }
+  .kpi .value { font-size: 30px; font-weight: 600; line-height: 1.1; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .kpi .sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .lifetime-line { text-align: center; color: var(--muted); font-size: 12px; }
+  .lifetime-line strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .chart-wrap { position: relative; height: 240px; }
+  .chart-note { color: var(--muted); font-size: 12px; padding: 10px 0; }
+
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.05em; font-weight: 600; white-space: nowrap; }
+  td.score { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .sub { color: var(--muted); font-size: 11px; }
+  .truncate { max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .chip { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .chip-green { background: var(--green-soft); color: var(--green); }
+  .chip-yellow { background: var(--yellow-soft); color: var(--yellow-ink); }
+  .chip-grey { background: var(--grey-soft); color: var(--muted); }
+  .chip-navy { background: var(--navy-soft); color: var(--navy); }
+  .chip-red { background: var(--red-soft); color: var(--red); }
+
+  .btn { font: inherit; font-size: 12px; cursor: pointer; padding: 5px 10px; border-radius: 4px; border: 1px solid var(--ink); background: var(--paper); color: var(--ink); display: inline-block; text-align: center; text-decoration: none; line-height: 1.3; }
+  .btn:hover { background: var(--ink); color: var(--paper); }
+  .btn:focus-visible, .tab:focus-visible, summary:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+  .btn-small { padding: 2px 8px; font-size: 11px; }
+  .btn.is-applied { background: var(--green); border-color: var(--green); color: var(--paper); }
+  .btn.is-saved { background: var(--yellow); border-color: var(--yellow); color: var(--on-yellow); }
+  .btn.is-skipped { background: var(--muted); border-color: var(--muted); color: var(--paper); }
+  .mark-row { display: flex; gap: 4px; }
+  .mark-row .btn { flex: 1; }
+
+  .tabs { display: flex; flex-wrap: wrap; border-bottom: 1px solid var(--line); margin-bottom: 10px; }
+  .tab { font: inherit; background: none; border: 0; border-bottom: 2px solid transparent; padding: 8px 14px; cursor: pointer; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+  .tab[aria-pressed="true"] { color: var(--ink); border-bottom-color: var(--yellow); font-weight: 600; }
+
+  .err { background: var(--red-soft); border: 1px solid var(--red); color: var(--ink); padding: 12px 14px; border-radius: 6px; font-size: 13px; }
+  .empty { text-align: center; padding: 32px 20px; color: var(--muted); }
+  .empty h2 { color: var(--navy); margin-bottom: 6px; }
+  .rules { background: var(--bg); border: 1px dashed var(--line); border-radius: 6px; padding: 14px; margin: 18px auto 0; text-align: left; max-width: 560px; color: var(--ink); }
+  .quiet-day { padding: 18px; text-align: center; background: var(--bg); border-radius: 6px; color: var(--muted); }
+  .quiet-day strong { color: var(--ink); display: block; margin-bottom: 4px; }
+
+  /* Today's brief */
+  .today-counts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; padding: 12px 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; }
+  .today-counts .tc { text-align: center; }
+  .today-counts .n { font-size: 24px; font-weight: 700; display: block; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .today-counts .lbl { font-size: 11px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.05em; margin-top: 4px; display: block; }
+  .today-counts .disqualified .n { color: var(--muted); }
+  .today-counts .qualified .n { color: var(--green); }
+  .today-counts .applied .n { color: var(--navy); }
+  .threshold-note { grid-column: 1 / -1; text-align: center; font-size: 11px; color: var(--muted); padding-top: 6px; border-top: 1px dashed var(--line); }
+  .today-cards { display: grid; gap: 10px; }
+  .today-card { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; gap: 14px; padding: 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); align-items: center; }
+  .today-card.top { border-left: 6px solid var(--yellow); }
+  .today-score { font-size: 28px; font-weight: 700; text-align: center; padding: 8px 0; border-radius: 6px; font-variant-numeric: tabular-nums; }
+  .today-score.green { background: var(--green-soft); color: var(--green); }
+  .today-score.yellow { background: var(--yellow-soft); color: var(--yellow-ink); }
+  .today-meta { color: var(--muted); font-size: 12px; margin-top: 3px; }
+  .today-why { font-size: 13px; margin-top: 6px; }
+  .today-actions { display: flex; flex-direction: column; gap: 6px; min-width: 150px; }
+  .materials { margin-top: 8px; font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .materials .files { flex-basis: 100%; }
+  .materials code { color: var(--ink); overflow-wrap: anywhere; }
+
+  /* Applications */
+  .app-metrics { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+  .app-metrics .tile { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 10px 8px; text-align: center; }
+  .app-metrics .tile strong { display: block; font-size: 22px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .app-metrics .tile .l { display: block; font-size: 10px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.05em; margin-top: 4px; }
+  .app-metrics .acknowledged strong { color: var(--yellow-ink); }
+  .app-metrics .in-progress strong { color: var(--green); }
+  .app-metrics .rejected strong { color: var(--red); }
+  .app-metrics .offer strong { color: var(--green); }
+  .app-metrics .rate strong { color: var(--navy); }
+
   /* Run history */
-  .run-row { border:1px solid var(--line); border-radius:6px; margin-bottom:8px; background:var(--paper); overflow:hidden; }
-  .run-row[open] { border-color:var(--navy); }
-  .run-summary { padding:12px 14px; cursor:pointer; display:grid; grid-template-columns: 1fr auto auto auto auto; gap:18px; align-items:center; list-style:none; font-size:13px; }
-  .run-summary::-webkit-details-marker { display:none; }
-  .run-summary:hover { background:var(--bg); }
-  .run-date { font-weight:600; color:var(--ink); }
-  .run-date .weekday { color:var(--grey); font-weight:400; margin-left:6px; font-size:12px; }
-  .run-stat { color:var(--grey); font-size:11px; text-align:center; min-width:60px; }
-  .run-stat strong { font-size:18px; display:block; line-height:1.1; }
-  .run-stat.scanned strong { color:var(--ink); }
-  .run-stat.disqualified strong { color:var(--grey); }
-  .run-stat.qualified strong { color:var(--green); }
-  .run-stat.applied strong { color:var(--navy); }
-  .run-stat .lbl { display:block; text-transform:uppercase; letter-spacing:0.04em; margin-top:2px; }
-  .run-top { font-size:12px; color:var(--grey); max-width:240px; text-align:right; }
-  .run-top strong { color:var(--ink); }
-  .run-detail { padding:0 14px 14px 14px; border-top:1px solid var(--line); }
-  .run-detail table { margin-top:10px; }
-  .lifetime-line { text-align:center; color:var(--grey); font-size:11px; margin-top:-12px; margin-bottom:18px; padding-bottom:6px; }
-  .lifetime-line strong { color:var(--ink); }
+  .runs { display: grid; gap: 8px; }
+  .run-row { border: 1px solid var(--line); border-radius: 6px; background: var(--paper); overflow: hidden; }
+  .run-row[open] { border-color: var(--navy); }
+  .run-summary { padding: 12px 14px; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) repeat(4, auto) minmax(0, 240px); gap: 18px; align-items: center; list-style: none; }
+  .run-summary::-webkit-details-marker { display: none; }
+  .run-summary:hover { background: var(--bg); }
+  .run-date { font-weight: 600; }
+  .run-date .weekday { color: var(--muted); font-weight: 400; margin-left: 6px; font-size: 12px; }
+  .run-stat { color: var(--muted); font-size: 11px; text-align: center; min-width: 60px; }
+  .run-stat strong { font-size: 18px; display: block; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .run-stat.scanned strong { color: var(--ink); }
+  .run-stat.qualified strong { color: var(--green); }
+  .run-stat.applied strong { color: var(--navy); }
+  .run-stat .lbl { display: block; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+  .run-top { font-size: 12px; color: var(--muted); text-align: right; }
+  .run-top strong { color: var(--ink); }
+  .run-detail { padding: 0 14px 14px; border-top: 1px solid var(--line); }
+  .drops { margin-top: 10px; color: var(--muted); font-size: 11px; }
+  footer { text-align: center; color: var(--muted); font-size: 11px; padding: 6px 0 12px; }
+
+  @media (max-width: 760px) {
+    .kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-2 { grid-template-columns: minmax(0, 1fr); }
+    .app-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .run-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .run-summary .run-date, .run-summary .run-top { grid-column: 1 / -1; text-align: left; }
+  }
+  @media (max-width: 560px) {
+    .today-counts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .today-card { grid-template-columns: 60px minmax(0, 1fr); }
+    .today-actions { grid-column: 1 / -1; min-width: 0; }
+    .app-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
 </style>
 
 <div class="wrap">
   <header>
     <div>
-      <h1>Daily Job Briefing</h1>
+      <h1>{FIRST_NAME}'s Job Bot</h1>
       <div class="meta"><span class="pulse"></span><span id="status-text">Loading…</span></div>
     </div>
-    <div style="display:flex; align-items:center; gap:14px">
-      <div class="meta">{USER_NAME} · {SEARCH_TAGLINE}</div>
-      <button class="btn" id="refresh-btn" style="margin:0">Refresh data</button>
-    </div>
+    <div class="meta">{SEARCH_TAGLINE}</div>
   </header>
 
-  <div id="err-state" style="display:none" class="err"></div>
+  <div id="err-state" class="err" hidden></div>
 
-  <div id="empty-state" style="display:none">
+  <div id="empty-state" hidden>
     <div class="empty panel">
-      <h2>No data yet</h2>
-      <p>The first scheduled run hasn't completed. Jobs scored, applied, and skipped will populate here automatically.</p>
-      <div id="next-run"></div>
-      <div class="rules">
-        <strong>Search rules currently in effect:</strong><br>
-        Source: company-direct career sites only (no aggregators)<br>
-        Freshness: postings ≤ 7 days old, date verified or skipped<br>
-        Output: top 3 matches per day, never padded<br>
-        Match floor: score ≥ 75
-      </div>
+      <h2 id="empty-title">No runs yet</h2>
+      <p id="empty-text">Your first run fills this in. Runs fire on the schedule you picked while the Claude desktop app is open.</p>
+      <div class="rules" id="rules-box"></div>
     </div>
   </div>
 
-  <div id="data-state" style="display:none">
-    <div class="panel" id="today-panel">
+  <div id="data-state" class="wrap-inner" hidden>
+    <section class="panel">
       <h2>Today's brief · <span id="today-date"></span></h2>
       <div id="today-counts" class="today-counts"></div>
-      <div id="today-cards"></div>
-    </div>
+      <div id="today-cards" class="today-cards"></div>
+    </section>
 
     <div class="kpi-row">
       <div class="kpi"><div class="label">Jobs scanned (30d)</div><div class="value" id="kpi-scanned">0</div><div class="sub" id="kpi-scanned-sub">—</div></div>
-      <div class="kpi"><div class="label">Qualified ≥75 match (30d)</div><div class="value" id="kpi-qualified">0</div><div class="sub" id="kpi-qualified-sub">—</div></div>
+      <div class="kpi"><div class="label" id="kpi-qualified-label">Qualified (30d)</div><div class="value" id="kpi-qualified">0</div><div class="sub" id="kpi-qualified-sub">—</div></div>
       <div class="kpi"><div class="label">Applied (30d)</div><div class="value" id="kpi-applied">0</div><div class="sub" id="kpi-applied-sub">—</div></div>
-      <div class="kpi"><div class="label">Apply rate</div><div class="value" id="kpi-rate">—</div><div class="sub">applied / qualified</div></div>
+      <div class="kpi"><div class="label">Apply rate</div><div class="value" id="kpi-rate">—</div><div class="sub">applied ÷ qualified</div></div>
     </div>
     <div class="lifetime-line" id="lifetime-line">—</div>
 
-    <div class="panel">
+    <section class="panel">
       <h2>Run history · most recent first</h2>
-      <div id="run-history"></div>
-    </div>
+      <div id="run-history" class="runs"></div>
+    </section>
 
-    <div class="panel">
-      <h2>Daily volume — last 30 days</h2>
-      <div class="chart-wrap"><canvas id="chart-volume"></canvas></div>
-    </div>
+    <section class="panel">
+      <h2>Daily volume · last 30 days</h2>
+      <div class="chart-wrap"><canvas id="chart-volume" aria-label="Jobs scanned, qualified, and applied per day"></canvas></div>
+    </section>
 
     <div class="grid-2">
-      <div class="panel">
-        <h2>Where the jobs are</h2>
-        <div class="chart-wrap"><canvas id="chart-geo"></canvas></div>
-      </div>
-      <div class="panel">
-        <h2>Top skills mentioned in JDs</h2>
-        <div class="chart-wrap"><canvas id="chart-skills"></canvas></div>
-      </div>
+      <section class="panel">
+        <h2>Where the qualified jobs are</h2>
+        <div class="chart-wrap"><canvas id="chart-geo" aria-label="Qualified jobs by location"></canvas></div>
+      </section>
+      <section class="panel">
+        <h2>Top skills in qualified JDs</h2>
+        <div class="chart-wrap"><canvas id="chart-skills" aria-label="Most-mentioned skills in qualified job descriptions"></canvas></div>
+      </section>
     </div>
 
-    <div class="panel">
-      <h2>My Applications · submitted + recruiter activity</h2>
+    <section class="panel">
+      <h2>My applications · submitted and recruiter activity</h2>
       <div class="app-metrics" id="app-metrics"></div>
-      <div class="tabs" id="apps-tabs">
-        <div class="tab active" data-apps-filter="active">In progress</div>
-        <div class="tab" data-apps-filter="lost">Rejected</div>
-        <div class="tab" data-apps-filter="won">Offers</div>
-        <div class="tab" data-apps-filter="all">All</div>
+      <div class="tabs" role="group" aria-label="Filter applications">
+        <button class="tab" data-apps-filter="active">In progress</button>
+        <button class="tab" data-apps-filter="lost">Closed</button>
+        <button class="tab" data-apps-filter="won">Offers</button>
+        <button class="tab" data-apps-filter="all">All</button>
       </div>
       <div id="apps-table-wrap"></div>
-    </div>
+    </section>
 
-    <div class="panel">
+    <section class="panel">
       <h2>Active pipeline · qualified, no decision yet</h2>
       <div id="pipeline-table-wrap"></div>
-    </div>
+    </section>
 
-    <div class="panel">
+    <section class="panel">
       <h2>Activity log</h2>
-      <div class="tabs">
-        <div class="tab active" data-tab="applied">Applied</div>
-        <div class="tab" data-tab="skipped">Skipped</div>
-        <div class="tab" data-tab="saved">Saved for later</div>
+      <div class="tabs" role="group" aria-label="Filter activity">
+        <button class="tab" data-tab="applied">Applied</button>
+        <button class="tab" data-tab="skipped">Skipped</button>
+        <button class="tab" data-tab="saved">Saved for later</button>
       </div>
       <div id="log-table-wrap"></div>
-    </div>
+    </section>
   </div>
 
-  <div class="footer">
-    Reads <code>Job Bot/briefs/all_jobs.jsonl</code> + <code>Job Bot/briefs/feedback.json</code>. Edit <code>config/preferences.md</code> to retune.
-  </div>
+  <footer>
+    Built from <code>Job Bot/briefs/all_jobs.jsonl</code>. Edit <code>Job Bot/config/preferences.md</code> or tell Claude what to change.
+    <span id="sync-note"></span>
+  </footer>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 
 <script>
-const COLORS = { ink:'#111', navy:'#1f3a5f', yellow:'#f5c518', green:'#2f8a3c', red:'#c0392b', grey:'#666', line:'#e6e6e6' };
-const LOCAL_KEY = 'jobbot_feedback_cache_v1';
-const MOUNT_KEY = 'jobbot_mount_path_v1';
+'use strict';
 
-let MOUNT = null; // discovered at load — e.g. /sessions/<id>/mnt/Job Bot
-let JOBS = [];
-let APPLICATIONS = [];
-let FEEDBACK = {};
-let CURRENT_TAB = 'applied';
-let APPS_FILTER = 'active';
-
-async function bash(cmd) {
-  return await window.cowork.callMcpTool('mcp__workspace__bash', { command: cmd });
-}
-
-function extractText(out) {
-  if (typeof out === 'string') return out;
-  if (out && out.content && Array.isArray(out.content)) return out.content.map(c => c.text || '').join('');
-  if (out && out.output) return out.output;
-  return '';
-}
-
-function safeJson(text, fallback) { try { return JSON.parse(text); } catch { return fallback; } }
-
-function parseJsonl(text) {
-  if (!text) return [];
-  return text.split('\n').filter(l => l.trim()).map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
-}
-
-async function discoverMount() {
-  // Always re-discover the mount in case the session changed since last load
-  const out = extractText(await bash(`ls -d /sessions/*/mnt/Job\\ Bot 2>/dev/null | head -1`)).trim();
-  if (out) {
-    localStorage.setItem(MOUNT_KEY, out);
-    return out;
-  }
-  // Fall back to cached path if live discovery returns nothing
-  const cached = localStorage.getItem(MOUNT_KEY);
-  if (cached) {
-    const exists = extractText(await bash(`test -d "${cached}" && echo OK || echo MISS`)).trim();
-    if (exists === 'OK') return cached;
-  }
-  return null;
-}
-
-function showError(msg) {
-  const el = document.getElementById('err-state');
-  el.style.display = 'block';
-  el.innerHTML = msg;
-}
-
-async function loadData() {
-  document.getElementById('status-text').textContent = 'Loading…';
-  // PRIMARY: read baked-in data from the HTML (works regardless of mount state)
-  const bakedEl = document.getElementById('baked-data');
-  if (bakedEl) {
-    try {
-      const baked = JSON.parse(bakedEl.textContent);
-      JOBS = baked.jobs || [];
-      APPLICATIONS = baked.applications || [];
-      FEEDBACK = baked.feedback || {};
-      // Merge any pending localStorage feedback that hasn't synced
-      const cached = JSON.parse(localStorage.getItem(LOCAL_KEY) || '{}');
-      Object.assign(FEEDBACK, cached);
-      // Try to discover mount in background for Apply/Skip writes; not blocking
-      discoverMount().then(m => { MOUNT = m; });
-      const stamp = baked.generated_at ? new Date(baked.generated_at).toLocaleString() : 'baked-in';
-      document.getElementById('status-text').textContent = `${JOBS.length} jobs in ledger · snapshot ${stamp}`;
-      return true;
-    } catch (e) {
-      console.warn('baked data parse failed, falling back to live read', e);
-    }
-  }
-  // FALLBACK: live read via bash (only works if mount available in this session)
-  MOUNT = await discoverMount();
-  if (!MOUNT) {
-    showError('No baked-in data and Job Bot folder not mounted in this session. Ask Claude to re-bake the dashboard, or open the folder via the Cowork sidebar and reload.');
-    return false;
-  }
-  try {
-    const jobsRaw = extractText(await bash(`cat "${MOUNT}/briefs/all_jobs.jsonl" 2>/dev/null || echo ""`));
-    const fbRaw = extractText(await bash(`cat "${MOUNT}/briefs/feedback.json" 2>/dev/null || echo "{}"`));
-    JOBS = parseJsonl(jobsRaw);
-    FEEDBACK = safeJson(fbRaw, {});
-    const cached = JSON.parse(localStorage.getItem(LOCAL_KEY) || '{}');
-    Object.assign(FEEDBACK, cached);
-    document.getElementById('status-text').textContent = `${JOBS.length} jobs in ledger · live read ${new Date().toLocaleTimeString()}`;
-    return true;
-  } catch (e) {
-    showError('Could not read ledger files: ' + (e.message||e));
-    return false;
-  }
-}
-
-function daysAgo(dateStr) {
-  if (!dateStr) return 999;
-  const d = new Date(dateStr);
-  return Math.floor((Date.now() - d.getTime()) / 86400000);
-}
-function lastNDays(n) { return JOBS.filter(j => daysAgo(j.scored_date) <= n); }
-
-function renderEmpty() {
-  document.getElementById('empty-state').style.display = 'block';
-  document.getElementById('data-state').style.display = 'none';
-  const next = nextWeekday7am();
-  document.getElementById('next-run').innerHTML = `<p style="margin-top:14px"><strong>Next scheduled run:</strong> ${next.toLocaleString()} (in ${humanDelta(next - Date.now())})</p>`;
-}
-
-function nextWeekday7am() {
-  const d = new Date();
-  d.setHours(7, 7, 0, 0);
-  if (d <= new Date()) d.setDate(d.getDate() + 1);
-  while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
-  return d;
-}
-
-function humanDelta(ms) {
-  const h = Math.floor(ms / 3600000);
-  if (h < 24) return `${h}h`;
-  return `${Math.floor(h/24)}d ${h%24}h`;
-}
-
-function renderData() {
-  document.getElementById('empty-state').style.display = 'none';
-  document.getElementById('data-state').style.display = 'block';
-
-  const last30 = lastNDays(30);
-  const qualified30 = last30.filter(j => j.outcome === 'qualified');
-  const applied30 = qualified30.filter(j => (FEEDBACK[j.url]||{}).status === 'applied');
-
-  document.getElementById('kpi-scanned').textContent = last30.length;
-  document.getElementById('kpi-scanned-sub').textContent = `${lastNDays(7).length} in last 7 days`;
-  document.getElementById('kpi-qualified').textContent = qualified30.length;
-  document.getElementById('kpi-qualified-sub').textContent = `${Math.round(100*qualified30.length/Math.max(1,last30.length))}% pass rate`;
-  document.getElementById('kpi-applied').textContent = applied30.length;
-  const skip = qualified30.filter(j => (FEEDBACK[j.url]||{}).status === 'skipped').length;
-  const save = qualified30.filter(j => (FEEDBACK[j.url]||{}).status === 'saved').length;
-  document.getElementById('kpi-applied-sub').textContent = `${skip} skipped · ${save} saved`;
-  document.getElementById('kpi-rate').textContent = qualified30.length ? `${Math.round(100*applied30.length/qualified30.length)}%` : '—';
-
-  // Lifetime stats line
-  const allTime = JOBS;
-  const allQualified = allTime.filter(j => j.outcome === 'qualified');
-  const allApplied = allQualified.filter(j => (FEEDBACK[j.url]||{}).status === 'applied');
-  const firstDate = allTime.map(j => j.scored_date||'').filter(Boolean).sort()[0];
-  const dayCount = firstDate ? Math.max(1, Math.floor((Date.now() - new Date(firstDate).getTime()) / 86400000) + 1) : 1;
-  document.getElementById('lifetime-line').innerHTML = `Lifetime · <strong>${allTime.length}</strong> scanned · <strong>${allQualified.length}</strong> qualified · <strong>${allApplied.length}</strong> applied · across ${dayCount} day${dayCount===1?'':'s'}`;
-
-  renderTodayBrief();
-  renderRunHistory();
-  renderVolumeChart();
-  renderGeoChart();
-  renderSkillsChart();
-  renderApplications();
-  renderPipeline();
-  renderLog();
-}
-
-const APP_STATUS_META = {
+const LOCAL_KEY = 'jobbot_feedback_v2';
+const MARKS = { applied: 'Applied', saved: 'Save', skipped: 'Skip' };
+const SURFACED = ['qualified', 'stepping-stone'];
+const APP_STATUS = {
   submitted:    { label: 'Submitted',    chip: 'chip-navy',   bucket: 'active' },
   acknowledged: { label: 'Acknowledged', chip: 'chip-navy',   bucket: 'active' },
   screening:    { label: 'Screening',    chip: 'chip-yellow', bucket: 'active' },
@@ -1053,597 +928,667 @@ const APP_STATUS_META = {
   offer:        { label: 'Offer',        chip: 'chip-green',  bucket: 'won'    },
   accepted:     { label: 'Accepted',     chip: 'chip-green',  bucket: 'won'    },
   declined:     { label: 'Declined',     chip: 'chip-grey',   bucket: 'lost'   },
-  rejected:     { label: 'Rejected',     chip: 'chip-grey',   bucket: 'lost'   },
+  rejected:     { label: 'Rejected',     chip: 'chip-red',    bucket: 'lost'   },
   ghosted:      { label: 'Ghosted',      chip: 'chip-grey',   bucket: 'lost'   },
+  withdrew:     { label: 'Withdrew',     chip: 'chip-grey',   bucket: 'lost'   },
 };
+const IN_PROGRESS = ['screening', 'assessment', 'interview', 'interviewing', 'phone-screen', 'onsite', 'final-round', 'reference-check'];
+const LOCAL_ONLY = 'Marks save in this browser only. Tell Claude "mark <company> applied" to record one for the next run.';
 
-function renderAppMetrics() {
-  const m = document.getElementById('app-metrics');
-  if (!m) return;
-  if (!APPLICATIONS || !APPLICATIONS.length) {
-    m.innerHTML = '';
-    return;
-  }
-  const buckets = { submitted:0, acknowledged:0, in_progress:0, rejected:0, offer:0 };
-  APPLICATIONS.forEach(a => {
-    const s = a.application_status;
-    if (s === 'submitted') buckets.submitted++;
-    else if (s === 'acknowledged') buckets.acknowledged++;
-    else if (['interviewing','phone-screen','onsite','final-round','reference-check'].includes(s)) buckets.in_progress++;
-    else if (['rejected','ghosted','declined'].includes(s)) buckets.rejected++;
-    else if (['offer','accepted'].includes(s)) buckets.offer++;
+const state = {
+  jobs: [], applications: [], feedback: {}, floor: 75, star: 85, lifetime: null, generatedAt: null,
+  tab: 'applied', appsFilter: 'active',
+};
+const localMarks = readLocal();   // marks made in this browser; uploaded once the database answers
+let db = null;                    // the artifact's database, when this view has one
+let dbState = 'connecting';       // connecting | live | local
+let lastWriteError = null;
+const unsynced = new Set();       // job URLs whose latest mark hasn't reached the database
+const writeChains = {};           // one write at a time per job
+const failedPanels = new Set();
+
+// ---------- helpers ----------
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+// Only http(s) links reach the page; scraped data never becomes a javascript: URL.
+function safeUrl(u) {
+  try { const x = new URL(String(u)); return (x.protocol === 'https:' || x.protocol === 'http:') ? x.href : ''; }
+  catch { return ''; }
+}
+function isObj(x) { return x !== null && typeof x === 'object' && !Array.isArray(x); }
+function isSurfaced(j) { return SURFACED.includes(j.outcome); }
+function localDay(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function dayOf(s) { return String(s ?? '').slice(0, 10); }
+function parseDay(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dayOf(s));
+  return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+}
+function daysAgo(s) {
+  const d = parseDay(s);
+  if (!d) return Infinity;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return Math.round((today - d) / 86400000);
+}
+function lastNDays(n) { return state.jobs.filter(j => daysAgo(j.scored_date) < n); } // n days including today
+function statusOf(url) { return (state.feedback[url] || {}).status || null; }
+function markTime(m) { return Date.parse(m && m.timestamp) || 0; }
+function pct(a, b) { return b ? `${Math.round(100 * a / b)}%` : '—'; }
+function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function plural(n, word) { return `${n} ${word}${n === 1 ? '' : 's'}`; }
+function byScore(rows) { return rows.slice().sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0)); }
+// One row per posting (the newest), so a role seen on several days counts once.
+function uniqueJobs(rows) {
+  const best = new Map();
+  rows.forEach(j => {
+    if (typeof j.url !== 'string' || !j.url) return;
+    const cur = best.get(j.url);
+    if (!cur || dayOf(j.scored_date) >= dayOf(cur.scored_date)) best.set(j.url, j);
   });
-  const total = APPLICATIONS.length;
-  const responded = APPLICATIONS.filter(a => a.last_email_at && a.last_email_at !== a.applied_at).length;
-  const rate = total ? Math.round(100 * responded / total) + '%' : '—';
-  m.innerHTML = `
-    <div class="tile submitted"><strong>${buckets.submitted}</strong><span class="l">Submitted</span></div>
-    <div class="tile acknowledged"><strong>${buckets.acknowledged}</strong><span class="l">Acknowledged</span></div>
-    <div class="tile in-progress"><strong>${buckets.in_progress}</strong><span class="l">In progress</span></div>
-    <div class="tile rejected"><strong>${buckets.rejected}</strong><span class="l">Rejected</span></div>
-    <div class="tile offer"><strong>${buckets.offer}</strong><span class="l">Offers</span></div>
-    <div class="tile rate"><strong>${rate}</strong><span class="l">Response rate</span></div>
-  `;
+  return [...best.values()];
+}
+function skillsOf(j) {
+  const s = j.skills_mentioned;
+  const list = Array.isArray(s) ? s : typeof s === 'string' ? s.split(',') : [];
+  return list.map(x => String(x).trim()).filter(Boolean);
+}
+function table(head, rows) {
+  return `<div class="table-scroll"><table><thead><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
-function renderApplications() {
-  renderAppMetrics();
-  const wrap = document.getElementById('apps-table-wrap');
-  if (!APPLICATIONS || !APPLICATIONS.length) {
-    wrap.innerHTML = '<div class="empty" style="padding:18px"><em>No applications logged yet. The bot adds rows here when you confirm a submission.</em></div>';
+// cyrb53: a short, path-safe database id for each job URL.
+function markId(url) {
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  const s = String(url);
+  for (let i = 0; i < s.length; i++) {
+    const ch = s.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return 'j' + (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+}
+
+// ---------- feedback (Applied / Save / Skip) ----------
+function readLocal() {
+  try { const v = JSON.parse(localStorage.getItem(LOCAL_KEY) || '{}'); return isObj(v) ? v : {}; } catch { return {}; }
+}
+function writeLocal() {
+  try { localStorage.setItem(LOCAL_KEY, JSON.stringify(localMarks)); } catch { /* storage blocked; marks still live in memory */ }
+}
+// Each source maps job URL -> {status, timestamp, day}. The newest timestamp wins; status null clears a mark.
+function mergeMarks(source) {
+  for (const [url, mark] of Object.entries(source || {})) {
+    if (!isObj(mark)) continue;
+    const cur = state.feedback[url];
+    if (!cur || markTime(mark) >= markTime(cur)) state.feedback[url] = mark;
+  }
+}
+
+function updateSyncNote() {
+  let text = '';
+  if (dbState === 'local') text = LOCAL_ONLY;
+  else if (dbState === 'live') {
+    if (lastWriteError === 'quota_exceeded') text = 'Dashboard storage is full, so new marks save in this browser only.';
+    else if (lastWriteError && unsynced.size) text = `${plural(unsynced.size, 'mark')} saved in this browser but not synced yet. Open the dashboard here again to sync.`;
+    else text = 'Your marks sync to the next run.';
+  }
+  document.getElementById('sync-note').textContent = text;
+}
+
+// Write one mark as given (never toggles), retrying once when the database is briefly unavailable.
+function pushMark(url, mark) {
+  const ref = db.collection('feedback').doc(markId(url));
+  const body = { url, status: mark.status ?? null, timestamp: mark.timestamp, day: mark.day || null };
+  const write = () => ref.set(body);
+  unsynced.add(url);
+  writeChains[url] = (writeChains[url] || Promise.resolve())
+    .then(write)
+    .catch(e => {
+      if (e && e.code === 'unavailable') return new Promise(r => setTimeout(r, 400 + Math.random() * 1200)).then(write);
+      throw e;
+    })
+    .then(() => { unsynced.delete(url); if (!unsynced.size) lastWriteError = null; updateSyncNote(); },
+          e => { lastWriteError = (e && e.code) || 'unavailable'; updateSyncNote(); });
+}
+
+function setStatus(url, status) {
+  const next = statusOf(url) === status ? null : status; // clicking the active mark clears it
+  const mark = { status: next, timestamp: new Date().toISOString(), day: localDay() };
+  state.feedback[url] = mark;
+  localMarks[url] = mark;
+  writeLocal();
+  renderAll();
+  if (db) pushMark(url, mark);
+}
+
+async function connectDb() {
+  let handle = null;
+  if (window.claude && typeof window.claude.use === 'function') {
+    try { handle = await window.claude.use('db'); } catch { handle = null; }
+  }
+  if (!handle) { dbState = 'local'; updateSyncNote(); return; }
+  db = handle;
+  dbState = 'live';
+  updateSyncNote();
+  let reconciled = false;
+  db.collection('feedback').onSnapshot(snap => {
+    const remote = {};
+    snap.docs.forEach(d => {
+      const v = d.data();
+      if (v && typeof v.url === 'string') remote[v.url] = { status: v.status ?? null, timestamp: v.timestamp || null, day: v.day || null };
+    });
+    mergeMarks(remote);
+    // Once the database gives a definitive answer, upload marks this browser holds that it hasn't seen.
+    if (!reconciled && !(snap.metadata && snap.metadata.fromCache)) {
+      reconciled = true;
+      for (const [url, mark] of Object.entries(localMarks)) {
+        if (state.feedback[url] === mark && markTime(mark) > markTime(remote[url])) pushMark(url, mark);
+      }
+    }
+    renderAll();
+  }, () => {
+    db = null;
+    dbState = 'local';
+    updateSyncNote();
+  });
+}
+
+// ---------- shared fragments ----------
+function markButtons(url) {
+  const s = statusOf(url);
+  return Object.entries(MARKS).map(([m, label]) =>
+    `<button class="btn${s === m ? ' is-' + m : ''}" data-mark="${m}" data-url="${esc(url)}" aria-pressed="${s === m}">${label}</button>`
+  ).join('');
+}
+function scoreChip(j) {
+  return `<span class="chip ${(Number(j.score) || 0) >= state.star ? 'chip-green' : 'chip-yellow'}">${esc(j.score ?? '–')}</span>`;
+}
+function jdLink(j, text) {
+  const href = safeUrl(j.url);
+  return href ? `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer">${esc(text)}</a>` : esc(text);
+}
+function materials(j) {
+  const folder = j.tailored_files || '';
+  if (!folder) return '';
+  const files = [j.resume_file, j.cover_letter_file].filter(Boolean).map(f => `<code>${esc(f)}</code>`).join(' · ');
+  return `<div class="materials">Materials: <code>${esc(folder)}</code>
+    <button class="btn btn-small" data-copy="${esc(folder)}">Copy path</button>
+    ${files ? `<span class="files">${files}</span>` : ''}</div>`;
+}
+
+// ---------- render ----------
+// A panel that hits malformed data reports itself and leaves the others drawn.
+function safely(name, fn) {
+  try { fn(); }
+  catch (e) {
+    console.error(`Job Bot: ${name} failed`, e);
+    failedPanels.add(name);
+    const err = document.getElementById('err-state');
+    err.hidden = false;
+    err.textContent = `Part of the dashboard didn't load (${[...failedPanels].join(', ')}). Ask Claude to check the Job Bot ledger for a malformed row.`;
+  }
+}
+
+function renderAll() {
+  if (!state.jobs.length) {
+    document.getElementById('empty-state').hidden = false;
+    document.getElementById('data-state').hidden = true;
+    if (state.lifetime && state.lifetime.scanned) {
+      document.getElementById('empty-title').textContent = 'No recent runs';
+      document.getElementById('empty-text').textContent = 'Nothing in the last 31 days. Check Scheduled in the Claude sidebar for missed or paused runs.';
+    }
+    document.getElementById('rules-box').innerHTML = `<strong>Search rules in effect</strong><br>
+      Source: company career sites only, no job aggregators<br>
+      Freshness: posted within 7 days, with a verified date<br>
+      Output: up to 3 matches a day plus up to 2 stepping stones, never padded<br>
+      Match floor: ${esc(state.floor)}, strong fit at ${esc(state.star)}`;
     return;
   }
-  // Filter
-  const filtered = APPLICATIONS.filter(a => {
-    const meta = APP_STATUS_META[a.application_status] || { bucket: 'active' };
-    if (APPS_FILTER === 'all') return true;
-    return meta.bucket === APPS_FILTER;
-  });
-  // Sort: most recent activity first (last_email_at if present, else applied_at)
-  filtered.sort((a, b) => {
-    const ta = a.last_email_at || a.applied_at || '';
-    const tb = b.last_email_at || b.applied_at || '';
-    return tb.localeCompare(ta);
-  });
+  document.getElementById('empty-state').hidden = true;
+  document.getElementById('data-state').hidden = false;
+  safely('summary numbers', renderKpis);
+  safely("today's brief", renderToday);
+  safely('run history', renderRunHistory);
+  safely('charts', renderCharts);
+  safely('applications', renderApplications);
+  safely('pipeline', renderPipeline);
+  safely('activity log', renderLog);
+  markTabs();
+}
 
-  if (!filtered.length) {
-    wrap.innerHTML = `<div class="empty" style="padding:18px"><em>No applications in "${APPS_FILTER}" bucket.</em></div>`;
+function renderKpis() {
+  const last30 = lastNDays(30);
+  const q30 = uniqueJobs(last30.filter(j => j.outcome === 'qualified'));
+  const count = s => q30.filter(j => statusOf(j.url) === s).length;
+  document.getElementById('kpi-scanned').textContent = last30.length;
+  document.getElementById('kpi-scanned-sub').textContent = `${lastNDays(7).length} in the last 7 days`;
+  document.getElementById('kpi-qualified-label').textContent = `Qualified ${state.floor}+ (30d)`;
+  document.getElementById('kpi-qualified').textContent = q30.length;
+  document.getElementById('kpi-qualified-sub').textContent = `${pct(q30.length, last30.length)} pass rate`;
+  document.getElementById('kpi-applied').textContent = count('applied');
+  document.getElementById('kpi-applied-sub').textContent = `${count('skipped')} skipped · ${count('saved')} saved`;
+  document.getElementById('kpi-rate').textContent = pct(count('applied'), q30.length);
+
+  const lt = state.lifetime || {
+    scanned: state.jobs.length,
+    qualified: uniqueJobs(state.jobs.filter(j => j.outcome === 'qualified')).length,
+    first_date: state.jobs.map(j => dayOf(j.scored_date)).filter(Boolean).sort()[0],
+  };
+  const applied = Object.values(state.feedback).filter(m => isObj(m) && m.status === 'applied').length;
+  const age = daysAgo(lt.first_date);
+  const days = age === Infinity ? 1 : Math.max(1, age + 1);
+  document.getElementById('lifetime-line').innerHTML =
+    `Lifetime · <strong>${esc(lt.scanned)}</strong> scanned · <strong>${esc(lt.qualified)}</strong> qualified · <strong>${applied}</strong> applied · across ${plural(days, 'day')}`;
+}
+
+function renderToday() {
+  const dates = state.jobs.map(j => dayOf(j.scored_date)).filter(Boolean).sort();
+  const latest = dates[dates.length - 1];
+  const dateEl = document.getElementById('today-date');
+  dateEl.textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  if (latest && latest !== localDay()) dateEl.textContent += ` (last run ${latest})`;
+
+  const runJobs = state.jobs.filter(j => dayOf(j.scored_date) === latest);
+  const qualified = byScore(runJobs.filter(j => j.outcome === 'qualified'));
+  const stepping = byScore(runJobs.filter(j => j.outcome === 'stepping-stone'));
+  const shown = [...qualified.slice(0, 3), ...stepping.slice(0, 2)];
+  const applied = [...qualified, ...stepping].filter(j => statusOf(j.url) === 'applied').length;
+
+  document.getElementById('today-counts').innerHTML = `
+    <div class="tc"><span class="n">${runJobs.length}</span><span class="lbl">Scanned</span></div>
+    <div class="tc disqualified"><span class="n">${runJobs.length - qualified.length - stepping.length}</span><span class="lbl">Dropped</span></div>
+    <div class="tc qualified"><span class="n">${qualified.length}</span><span class="lbl">Qualified ${esc(state.floor)}+</span></div>
+    <div class="tc applied"><span class="n">${applied}</span><span class="lbl">Applied</span></div>
+    <div class="threshold-note">Matches need ${esc(state.floor)}+ against your resume; ${esc(state.star)}+ is a strong fit. Dropped means stale, off-fit, a dealbreaker, a repeat, or under the floor.</div>`;
+
+  const cards = document.getElementById('today-cards');
+  if (!shown.length) {
+    cards.innerHTML = `<div class="quiet-day"><strong>Quiet day: no qualifying postings</strong>
+      Scanned ${plural(runJobs.length, 'listing')}. None cleared the company-site, 7-day, and ${esc(state.floor)}-point bars.</div>`;
     return;
   }
-
-  const rows = filtered.map(a => {
-    const meta = APP_STATUS_META[a.application_status] || { label: a.application_status, chip: 'chip-grey' };
-    const days = a.applied_at ? Math.max(0, daysAgo(a.applied_at)) : '—';
-    const dayLabel = days === 0 ? 'today' : (days === 1 ? '1 day ago' : `${days} days ago`);
-    const lastEmail = a.last_email_subject
-      ? `<span class="truncate" title="${escapeHtml(a.last_email_subject)}">${escapeHtml(a.last_email_subject)}</span>` +
-        (a.last_email_at ? `<div class="sub" style="color:var(--grey); font-size:11px">${a.last_email_at}</div>` : '')
-      : '<span class="sub" style="color:var(--grey)">—</span>';
-    const gmailLink = a.last_email_thread_id
-      ? `<a class="small-link" href="https://mail.google.com/mail/u/0/#inbox/${a.last_email_thread_id}" target="_blank">open thread</a>`
-      : '';
-    const materialsLink = a.tailored_files
-      ? `<a class="small-link" href="file:///${a.tailored_files.replace(/\\/g,'/')}" title="${escapeHtml(a.tailored_files)}">materials</a>`
-      : '';
-    const score = (a.score_at_apply ?? '—');
-    return `<tr>
-      <td><strong>${escapeHtml(a.company)}</strong><div class="sub" style="color:var(--grey); font-size:11px">${escapeHtml(a.title || '')}</div></td>
-      <td>${a.applied_at || '—'}<div class="sub" style="color:var(--grey); font-size:11px">${dayLabel}</div></td>
-      <td><span class="chip ${meta.chip}">${meta.label}</span></td>
-      <td>${lastEmail}${gmailLink ? ' · ' + gmailLink : ''}</td>
-      <td class="score">${score}</td>
-      <td>${materialsLink}${a.url ? ' · <a class="small-link" href="' + a.url + '" target="_blank">JD</a>' : ''}</td>
-    </tr>`;
+  cards.innerHTML = shown.map((j, i) => {
+    const isStep = j.outcome === 'stepping-stone';
+    const href = safeUrl(j.url);
+    return `<article class="today-card${i === 0 && !isStep ? ' top' : ''}">
+      <div class="today-score ${(Number(j.score) || 0) >= state.star ? 'green' : 'yellow'}">${esc(j.score ?? '–')}</div>
+      <div style="min-width:0">
+        <div><strong>${esc(j.company)}</strong> · ${esc(j.title || '')}
+          ${isStep ? '<span class="chip chip-yellow">Stepping stone</span>' : ''}
+          ${j.network_override ? '<span class="chip chip-navy">Network override</span>' : ''}</div>
+        <div class="today-meta">${esc(j.location || '—')} · posted ${esc(j.posted_date || 'unverified')}${j.date_source ? ` (${esc(j.date_source)})` : ''}</div>
+        <div class="today-why">${esc(j.why_fits || '')}</div>
+        ${materials(j)}
+      </div>
+      <div class="today-actions">
+        ${href ? `<a class="btn" href="${esc(href)}" target="_blank" rel="noopener noreferrer">Apply on site →</a>` : ''}
+        <div class="mark-row">${markButtons(j.url)}</div>
+      </div>
+    </article>`;
   }).join('');
-
-  wrap.innerHTML = `<table>
-    <thead><tr><th>Company / Role</th><th>Applied</th><th>Status</th><th>Last email</th><th>Score</th><th>Links</th></tr></thead>
-    <tbody>${rows}</tbody>
-  </table>`;
-}
-
-function escapeHtml(s) {
-  return String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 }
 
 function renderRunHistory() {
   const wrap = document.getElementById('run-history');
-  // Group jobs by scored_date
+  const open = new Set([...wrap.querySelectorAll('details[open]')].map(d => d.dataset.date)); // keep expanded days open
   const byDate = {};
-  JOBS.forEach(j => {
-    const d = (j.scored_date||'').slice(0,10);
-    if (!d) return;
-    if (!byDate[d]) byDate[d] = [];
-    byDate[d].push(j);
-  });
-  const dates = Object.keys(byDate).sort().reverse(); // most recent first
-  if (!dates.length) {
-    wrap.innerHTML = '<p style="color:var(--grey); padding:10px">No runs yet. First run is scheduled for tomorrow at 7:00 AM local time.</p>';
-    return;
-  }
-  wrap.innerHTML = dates.slice(0, 30).map(d => {
+  state.jobs.forEach(j => { const d = dayOf(j.scored_date); if (d) (byDate[d] = byDate[d] || []).push(j); });
+  const dates = Object.keys(byDate).sort().reverse().slice(0, 30);
+  wrap.innerHTML = dates.map(d => {
     const jobs = byDate[d];
-    const qualified = jobs.filter(j => j.outcome === 'qualified').sort((a,b)=>(b.score||0)-(a.score||0));
-    const stepping = jobs.filter(j => j.outcome === 'stepping-stone').sort((a,b)=>(b.score||0)-(a.score||0));
+    const qualified = byScore(jobs.filter(j => j.outcome === 'qualified'));
+    const stepping = byScore(jobs.filter(j => j.outcome === 'stepping-stone'));
     const surfaced = [...qualified, ...stepping];
-    const applied = jobs.filter(j => (FEEDBACK[j.url]||{}).status === 'applied');
+    const applied = surfaced.filter(j => statusOf(j.url) === 'applied').length;
     const top = qualified[0] || stepping[0];
-    const dateObj = new Date(d + 'T12:00:00');
-    const weekday = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
-    const pretty = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const dropFreshness = jobs.filter(j => j.outcome === 'stale').length;
-    const dropFit = jobs.filter(j => ['off-fit','dealbreaker'].includes(j.outcome)).length;
-    const disqualified = jobs.length - qualified.length - stepping.length;
-    return `<details class="run-row">
+    const date = parseDay(d);
+    const count = o => jobs.filter(j => j.outcome === o).length;
+    const stale = count('stale'), offFit = count('off-fit') + count('dealbreaker'), below = count('below-floor'), repeats = count('dedup');
+    const other = jobs.length - surfaced.length - stale - offFit - below - repeats;
+    const rows = surfaced.map(j => {
+      const s = statusOf(j.url);
+      const statusChip = s ? `<span class="chip ${s === 'applied' ? 'chip-green' : s === 'saved' ? 'chip-yellow' : 'chip-grey'}">${esc(s)}</span>`
+                           : '<span class="chip chip-navy">undecided</span>';
+      return `<tr>
+        <td class="score">${scoreChip(j)}${j.outcome === 'stepping-stone' ? ' <span class="chip chip-yellow">step</span>' : ''}</td>
+        <td><strong>${esc(j.company)}</strong><div class="truncate">${jdLink(j, j.title || 'View posting')}</div></td>
+        <td>${esc(j.location || '—')}</td>
+        <td>${esc(j.posted_date || '—')}</td>
+        <td style="min-width:220px">${esc(j.why_fits || '')}</td>
+        <td>${statusChip}</td></tr>`;
+    }).join('');
+    return `<details class="run-row" data-date="${esc(d)}"${open.has(d) ? ' open' : ''}>
       <summary class="run-summary">
-        <div class="run-date">${pretty}<span class="weekday">${weekday}</span></div>
+        <div class="run-date">${date ? date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : esc(d)}<span class="weekday">${date ? date.toLocaleDateString(undefined, { weekday: 'short' }) : ''}</span></div>
         <div class="run-stat scanned"><strong>${jobs.length}</strong><span class="lbl">Scanned</span></div>
-        <div class="run-stat disqualified"><strong>${disqualified}</strong><span class="lbl">Disqual.</span></div>
-        <div class="run-stat qualified"><strong>${qualified.length}${stepping.length ? `+${stepping.length}*` : ''}</strong><span class="lbl">Qual ≥75${stepping.length ? ' (+steps)' : ''}</span></div>
-        <div class="run-stat applied"><strong>${applied.length}</strong><span class="lbl">Applied</span></div>
-        <div class="run-top">${top ? `<strong>${esc(top.company)}</strong> · ${top.score}` : '<em>quiet day</em>'}</div>
+        <div class="run-stat"><strong>${jobs.length - surfaced.length}</strong><span class="lbl">Dropped</span></div>
+        <div class="run-stat qualified"><strong>${qualified.length}${stepping.length ? `+${stepping.length}` : ''}</strong><span class="lbl">Qualified${stepping.length ? ' + steps' : ''}</span></div>
+        <div class="run-stat applied"><strong>${applied}</strong><span class="lbl">Applied</span></div>
+        <div class="run-top">${top ? `<strong>${esc(top.company)}</strong> · ${esc(top.score)}` : '<em>quiet day</em>'}</div>
       </summary>
       <div class="run-detail">
-        ${surfaced.length ? `<table>
-          <thead><tr><th>Score</th><th>Company / Role</th><th>Location</th><th>Posted</th><th>Why it fits</th><th>Status</th></tr></thead>
-          <tbody>${surfaced.map(j => {
-            const fb = FEEDBACK[j.url] || {};
-            const chip = (j.score||0) >= 85 ? 'chip chip-green' : 'chip chip-yellow';
-            const stepBadge = j.outcome === 'stepping-stone' ? ' <span class="chip chip-yellow" style="font-size:9px">step</span>' : '';
-            const statusChip = fb.status ? `<span class="chip chip-${fb.status==='applied'?'green':fb.status==='saved'?'yellow':'grey'}">${fb.status}</span>` : '<span class="chip chip-navy">undecided</span>';
-            return `<tr>
-              <td><span class="${chip}">${j.score||'-'}</span>${stepBadge}</td>
-              <td><div><strong>${esc(j.company)}</strong></div><div class="truncate"><a class="apply-link" href="${esc(j.url)}" target="_blank">${esc(j.title||'')}</a></div></td>
-              <td>${esc(j.location||'—')}</td>
-              <td>${esc(j.posted_date||'—')}</td>
-              <td style="max-width:300px">${esc(j.why_fits||'')}</td>
-              <td>${statusChip}</td>
-            </tr>`;
-          }).join('')}</tbody>
-        </table>` : ''}
-        <div style="margin-top:10px; color:var(--grey); font-size:11px">
-          Drops: ${dropFreshness} stale (>7 days) · ${dropFit} off-fit or dealbreaker · ${jobs.length - qualified.length - dropFreshness - dropFit} other
-        </div>
+        ${surfaced.length ? table(['Score', 'Company / role', 'Location', 'Posted', 'Why it fits', 'Status'], rows) : ''}
+        <div class="drops">Dropped: ${stale} stale · ${offFit} off-fit or dealbreaker · ${below} under the floor · ${repeats} repeats${other > 0 ? ` · ${other} other` : ''}</div>
       </div>
     </details>`;
   }).join('');
 }
 
-function renderTodayBrief() {
-  const today = new Date().toISOString().slice(0,10);
-  const dateEl = document.getElementById('today-date');
-  dateEl.textContent = new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
-
-  // Find the most recent run date in the ledger
-  const allDates = JOBS.map(j => (j.scored_date||'').slice(0,10)).filter(Boolean).sort();
-  const latestDate = allDates.length ? allDates[allDates.length - 1] : today;
-  const useDate = latestDate;
-  if (useDate !== today) {
-    dateEl.textContent += ` (last run: ${useDate})`;
-  }
-
-  // Compute today's counts across the full ledger for that date
-  const todayAll = JOBS.filter(j => (j.scored_date||'').slice(0,10) === useDate);
-  const todayQualified = todayAll.filter(j => j.outcome === 'qualified');
-  const todaySteppingStone = todayAll.filter(j => j.outcome === 'stepping-stone');
-  const todayDisqualified = todayAll.length - todayQualified.length - todaySteppingStone.length;
-  const todayApplied = todayAll.filter(j => (FEEDBACK[j.url]||{}).status === 'applied').length;
-  // Top 3 qualified + up to 2 stepping-stones below
-  const topQualified = todayQualified.sort((a,b) => (b.score||0) - (a.score||0)).slice(0,3);
-  const topStepping = todaySteppingStone.sort((a,b) => (b.score||0) - (a.score||0)).slice(0,2);
-  const todayJobs = [...topQualified, ...topStepping];
-
-  // Render the counts strip — 4 tiles
-  document.getElementById('today-counts').innerHTML = `
-    <div class="tc"><span class="n">${todayAll.length}</span><span class="lbl">Jobs scanned</span></div>
-    <div class="tc disqualified"><span class="n">${todayDisqualified}</span><span class="lbl">Disqualified</span></div>
-    <div class="tc qualified"><span class="n">${todayQualified.length}</span><span class="lbl">Qualified ≥75</span></div>
-    <div class="tc applied"><span class="n">${todayApplied}</span><span class="lbl">Applied</span></div>
-    <div class="threshold-note">Bot uses a 75-point match floor against your resume; 85+ stars as a strong fit. Disqualified = stale, off-fit, or below score floor. Applied counts only the qualified jobs you've marked Applied.</div>
-  `;
-
-  const cards = document.getElementById('today-cards');
-  if (!todayJobs.length) {
-    cards.innerHTML = `<div class="quiet-day">
-      <strong>Quiet day — 0 qualifying postings</strong>
-      Scanned ${todayAll.length} listings. None passed the source rule (company-direct only), the 7-day freshness floor, and the 75-point match threshold. The bar holds.
-    </div>`;
+const charts = {};
+function renderCharts() {
+  const ids = ['chart-volume', 'chart-geo', 'chart-skills'];
+  if (typeof window.Chart !== 'function') {
+    ids.forEach(id => {
+      const canvas = document.getElementById(id);
+      if (canvas) canvas.parentElement.innerHTML = '<p class="chart-note">Charts did not load. The tables on this page still work.</p>';
+    });
     return;
   }
+  const c = { muted: cssVar('--muted'), line: cssVar('--line'), navy: cssVar('--navy'), yellow: cssVar('--yellow'), green: cssVar('--green') };
+  Chart.defaults.color = c.muted;
+  Chart.defaults.borderColor = c.line;
+  Chart.defaults.font.family = cssVar('--font');
 
-  cards.innerHTML = todayJobs.map((j, idx) => {
-    const fb = FEEDBACK[j.url] || {};
-    const isStepping = j.outcome === 'stepping-stone';
-    const scoreCls = (j.score||0) >= 85 ? 'green' : 'yellow';
-    const topCls = (idx === 0 && !isStepping) ? ' top' : '';
-    const steppingBadge = isStepping ? '<span class="chip chip-yellow" style="margin-left:6px">Stepping stone</span>' : '';
-    const netOverrideBadge = j.network_override ? '<span class="chip chip-navy" style="margin-left:6px">Network override</span>' : '';
-    const folder = j.tailored_files || '';
-    const slug = (j.company||'').toLowerCase().replace(/[^a-z0-9]+/g,'');
-    const resumeFile = folder ? `${folder}${slug}_resume_tailored.docx` : '';
-    const coverFile = folder ? `${folder}${slug}_cover_letter.docx` : '';
-    const appliedCls = fb.status === 'applied' ? ' applied' : '';
-    const skippedCls = fb.status === 'skipped' ? ' skipped' : '';
-    const savedCls = fb.status === 'saved' ? ' saved' : '';
-    return `<div class="today-card${topCls}">
-      <div class="today-score ${scoreCls}">${j.score||'-'}</div>
-      <div>
-        <div><strong>${esc(j.company)}</strong> · ${esc(j.title||'')}${steppingBadge}${netOverrideBadge}</div>
-        <div class="today-meta">${esc(j.location||'—')} · posted ${esc(j.posted_date||'unverified')}${j.date_source ? ` (${esc(j.date_source)})` : ''}</div>
-        <div class="today-why">${esc(j.why_fits||'')}</div>
-      </div>
-      <div class="today-actions">
-        <a class="btn" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer">Apply on site →</a>
-        ${resumeFile ? `<button class="btn" onclick="presentFile('${esc(resumeFile)}')">Tailored resume</button>` : ''}
-        ${coverFile ? `<button class="btn" onclick="presentFile('${esc(coverFile)}')">Cover letter</button>` : ''}
-        ${folder ? `<button class="btn" onclick="presentFolder('${esc(folder)}')">Open folder</button>` : ''}
-        <div style="display:flex; gap:4px; margin-top:4px">
-          <button class="btn${appliedCls}" style="flex:1; margin:0" onclick="setStatus('${esc(j.url)}', 'applied')">Applied</button>
-          <button class="btn${savedCls}" style="flex:1; margin:0" onclick="setStatus('${esc(j.url)}', 'saved')">Save</button>
-          <button class="btn${skippedCls}" style="flex:1; margin:0" onclick="setStatus('${esc(j.url)}', 'skipped')">Skip</button>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function renderVolumeChart() {
-  const ctx = document.getElementById('chart-volume');
   const days = [];
-  const today = new Date(); today.setHours(0,0,0,0);
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(today); d.setDate(d.getDate() - i);
-    days.push(d.toISOString().slice(0,10));
-  }
-  const counts = days.map(day => {
-    const dayJobs = JOBS.filter(j => (j.scored_date||'').slice(0,10) === day);
-    return {
-      scanned: dayJobs.length,
-      qualified: dayJobs.filter(j => j.outcome === 'qualified').length,
-      applied: dayJobs.filter(j => (FEEDBACK[j.url]||{}).status === 'applied').length
-    };
+  for (let i = 29; i >= 0; i--) { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - i); days.push(localDay(d)); }
+  const perDay = days.map(day => {
+    const js = state.jobs.filter(j => dayOf(j.scored_date) === day);
+    return [js.length, js.filter(j => j.outcome === 'qualified').length, js.filter(j => isSurfaced(j) && statusOf(j.url) === 'applied').length];
   });
-  if (window._cv) window._cv.destroy();
-  window._cv = new Chart(ctx, {
+  const line = (label, i, color) => ({ label, data: perDay.map(p => p[i]), borderColor: color, backgroundColor: color, borderWidth: 2, tension: 0.3, pointRadius: 0 });
+  draw('chart-volume', {
     type: 'line',
-    data: { labels: days.map(d => d.slice(5)), datasets: [
-      { label:'Scanned', data: counts.map(c=>c.scanned), borderColor: COLORS.grey, backgroundColor:'transparent', borderWidth:2, tension:0.3 },
-      { label:'Qualified', data: counts.map(c=>c.qualified), borderColor: COLORS.navy, backgroundColor:'transparent', borderWidth:2, tension:0.3 },
-      { label:'Applied', data: counts.map(c=>c.applied), borderColor: COLORS.green, backgroundColor:'transparent', borderWidth:2, tension:0.3 }
-    ]},
-    options: { responsive:true, maintainAspectRatio:false,
-      plugins: { legend: { position:'bottom', labels:{ font:{ size:11 } } } },
-      scales: { y: { beginAtZero:true, ticks:{ stepSize:1 } }, x: { ticks:{ font:{ size:10 } } } }
-    }
+    data: { labels: days.map(d => d.slice(5)), datasets: [line('Scanned', 0, c.muted), line('Qualified', 1, c.navy), line('Applied', 2, c.green)] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { ticks: { maxRotation: 0, autoSkip: true } } } },
   });
+
+  const recentQ = uniqueJobs(lastNDays(30).filter(j => j.outcome === 'qualified'));
+  const tally = keys => Object.entries(keys.reduce((acc, k) => (acc[k] = (acc[k] || 0) + 1, acc), {})).sort((a, b) => b[1] - a[1]);
+  const bars = (entries, color) => ({
+    type: 'bar',
+    data: { labels: entries.map(e => e[0]), datasets: [{ data: entries.map(e => e[1]), backgroundColor: color }] },
+    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+      scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } },
+  });
+  draw('chart-geo', bars(tally(recentQ.map(j => String(j.location_type || j.location || 'Unknown'))).slice(0, 8), c.navy));
+  draw('chart-skills', bars(tally(recentQ.flatMap(skillsOf)).slice(0, 10), c.yellow));
+}
+function draw(id, config) {
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), config);
 }
 
-function renderGeoChart() {
-  const ctx = document.getElementById('chart-geo');
-  const buckets = {};
-  lastNDays(30).filter(j => j.outcome === 'qualified').forEach(j => {
-    const loc = (j.location_type || j.location || 'Unknown').toString();
-    buckets[loc] = (buckets[loc] || 0) + 1;
-  });
-  const entries = Object.entries(buckets).sort((a,b) => b[1] - a[1]).slice(0, 8);
-  if (window._cg) window._cg.destroy();
-  window._cg = new Chart(ctx, {
-    type: 'bar',
-    data: { labels: entries.map(e => e[0]), datasets: [{ data: entries.map(e => e[1]), backgroundColor: COLORS.navy }] },
-    options: { indexAxis:'y', responsive:true, maintainAspectRatio:false,
-      plugins: { legend: { display:false } },
-      scales: { x: { beginAtZero:true, ticks:{ stepSize:1 } } }
-    }
-  });
-}
+function renderApplications() {
+  const apps = state.applications;
+  const metrics = document.getElementById('app-metrics');
+  const wrap = document.getElementById('apps-table-wrap');
+  if (!apps.length) {
+    metrics.innerHTML = '';
+    wrap.innerHTML = '<p class="empty" style="padding:18px">No applications yet. Mark a job Applied and the next run adds it here.</p>';
+    return;
+  }
+  const count = list => apps.filter(a => list.includes(a.application_status)).length;
+  const responded = apps.filter(a => a.last_email_at).length;
+  metrics.innerHTML = `
+    <div class="tile"><strong>${count(['submitted'])}</strong><span class="l">Submitted</span></div>
+    <div class="tile acknowledged"><strong>${count(['acknowledged'])}</strong><span class="l">Acknowledged</span></div>
+    <div class="tile in-progress"><strong>${count(IN_PROGRESS)}</strong><span class="l">In progress</span></div>
+    <div class="tile rejected"><strong>${count(['rejected', 'ghosted', 'declined', 'withdrew'])}</strong><span class="l">Closed</span></div>
+    <div class="tile offer"><strong>${count(['offer', 'accepted'])}</strong><span class="l">Offers</span></div>
+    <div class="tile rate"><strong>${pct(responded, apps.length)}</strong><span class="l">Response rate</span></div>`;
 
-function renderSkillsChart() {
-  const ctx = document.getElementById('chart-skills');
-  const counts = {};
-  lastNDays(30).filter(j => j.outcome === 'qualified').forEach(j => {
-    (j.skills_mentioned || []).forEach(s => {
-      const k = s.trim();
-      if (k) counts[k] = (counts[k] || 0) + 1;
-    });
-  });
-  const entries = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0, 10);
-  if (window._cs) window._cs.destroy();
-  window._cs = new Chart(ctx, {
-    type: 'bar',
-    data: { labels: entries.map(e => e[0]), datasets: [{ data: entries.map(e => e[1]), backgroundColor: COLORS.yellow }] },
-    options: { indexAxis:'y', responsive:true, maintainAspectRatio:false,
-      plugins: { legend: { display:false } },
-      scales: { x: { beginAtZero:true, ticks:{ stepSize:1 } } }
-    }
-  });
+  const bucket = a => (APP_STATUS[a.application_status] || { bucket: 'active' }).bucket; // unknown statuses count as active
+  const shown = apps.filter(a => state.appsFilter === 'all' || bucket(a) === state.appsFilter)
+    .sort((a, b) => String(b.last_email_at || b.applied_at || '').localeCompare(String(a.last_email_at || a.applied_at || '')));
+  if (!shown.length) {
+    wrap.innerHTML = '<p class="empty" style="padding:18px">Nothing in this view yet.</p>';
+    return;
+  }
+  wrap.innerHTML = table(['Company / role', 'Applied', 'Status', 'Last email', 'Score', 'Links'], shown.map(a => {
+    const meta = APP_STATUS[a.application_status] || { label: a.application_status || 'unknown', chip: 'chip-grey' };
+    const age = daysAgo(a.applied_at);
+    const ageText = age === Infinity ? '' : age <= 0 ? 'today' : `${plural(age, 'day')} ago`;
+    const thread = a.last_email_thread_id ? ` · <a href="https://mail.google.com/mail/u/0/#all/${encodeURIComponent(a.last_email_thread_id)}" target="_blank" rel="noopener noreferrer">open thread</a>` : '';
+    return `<tr>
+      <td><strong>${esc(a.company)}</strong><div class="sub">${esc(a.title || '')}</div></td>
+      <td>${esc(dayOf(a.applied_at) || '—')}<div class="sub">${ageText}</div></td>
+      <td><span class="chip ${meta.chip}">${esc(meta.label)}</span></td>
+      <td>${a.last_email_subject ? `<div class="truncate" title="${esc(a.last_email_subject)}">${esc(a.last_email_subject)}</div><div class="sub">${esc(a.last_email_at || '')}</div>` : '<span class="sub">—</span>'}${thread}</td>
+      <td class="score">${esc(a.score_at_apply ?? '—')}</td>
+      <td>${jdLink(a, 'JD')}${a.tailored_files ? `<div class="sub"><code>${esc(a.tailored_files)}</code></div>` : ''}</td>
+    </tr>`;
+  }).join(''));
 }
 
 function renderPipeline() {
+  const pipeline = byScore(uniqueJobs(state.jobs.filter(j => j.outcome === 'qualified'))
+    .filter(j => !['applied', 'skipped'].includes(statusOf(j.url))));
   const wrap = document.getElementById('pipeline-table-wrap');
-  const pipeline = JOBS
-    .filter(j => j.outcome === 'qualified')
-    .filter(j => !(FEEDBACK[j.url] && ['applied','skipped'].includes(FEEDBACK[j.url].status)))
-    .sort((a,b) => (b.score||0) - (a.score||0));
-  if (!pipeline.length) {
-    wrap.innerHTML = '<p style="color:var(--grey); padding:10px">No undecided jobs in the pipeline.</p>';
-    return;
-  }
-  wrap.innerHTML = `<table><thead><tr>
-    <th>Score</th><th>Company / Role</th><th>Location</th><th>Posted</th><th>Materials</th><th>Decision</th>
-  </tr></thead><tbody>
-  ${pipeline.map(j => {
-    const fb = FEEDBACK[j.url] || {};
-    const chip = (j.score||0) >= 85 ? 'chip chip-green' : 'chip chip-yellow';
-    const savedCls = fb.status === 'saved' ? ' saved' : '';
-    return `<tr>
-      <td class="score"><span class="${chip}">${j.score||'-'}</span></td>
-      <td><div><strong>${esc(j.company)}</strong></div><div class="truncate"><a class="apply-link" href="${esc(j.url)}" target="_blank">${esc(j.title||'')}</a></div></td>
-      <td>${esc(j.location||'—')}</td>
-      <td>${j.posted_date ? esc(j.posted_date) : '—'}</td>
-      <td>${j.tailored_files ? `<a class="small-link" href="javascript:void(0)" onclick="presentFolder('${esc(j.tailored_files)}'); return false;">open folder</a>` : '—'} ${j.url ? `· <a class="small-link" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer">view JD</a>` : ''}</td>
-      <td>
-        <button class="btn" onclick="setStatus('${esc(j.url)}', 'applied')">Applied</button>
-        <button class="btn${savedCls}" onclick="setStatus('${esc(j.url)}', 'saved')">Save</button>
-        <button class="btn" onclick="setStatus('${esc(j.url)}', 'skipped')">Skip</button>
-      </td>
-    </tr>`;
-  }).join('')}
-  </tbody></table>`;
+  if (!pipeline.length) { wrap.innerHTML = '<p class="sub" style="padding:10px">No undecided jobs.</p>'; return; }
+  wrap.innerHTML = table(['Score', 'Company / role', 'Location', 'Posted', 'Materials', 'Decision'], pipeline.map(j => `<tr>
+    <td class="score">${scoreChip(j)}</td>
+    <td><strong>${esc(j.company)}</strong><div class="truncate">${jdLink(j, j.title || 'View posting')}</div></td>
+    <td>${esc(j.location || '—')}</td>
+    <td>${esc(j.posted_date || '—')}</td>
+    <td>${j.tailored_files ? `<code>${esc(j.tailored_files)}</code>` : '—'}</td>
+    <td><div class="mark-row">${markButtons(j.url)}</div></td>
+  </tr>`).join(''));
 }
 
 function renderLog() {
+  const items = uniqueJobs(state.jobs.filter(isSurfaced))
+    .filter(j => statusOf(j.url) === state.tab)
+    .sort((a, b) => markTime(state.feedback[b.url]) - markTime(state.feedback[a.url]));
   const wrap = document.getElementById('log-table-wrap');
-  const items = JOBS
-    .filter(j => (FEEDBACK[j.url]||{}).status === CURRENT_TAB)
-    .sort((a,b) => new Date((FEEDBACK[b.url]||{}).timestamp||0) - new Date((FEEDBACK[a.url]||{}).timestamp||0));
-  if (!items.length) {
-    wrap.innerHTML = `<p style="color:var(--grey); padding:10px">No jobs marked <strong>${CURRENT_TAB}</strong> yet.</p>`;
-    return;
-  }
-  wrap.innerHTML = `<table><thead><tr>
-    <th>When</th><th>Company / Role</th><th>Location</th><th>Score</th><th>Source</th><th></th>
-  </tr></thead><tbody>
-  ${items.map(j => {
-    const ts = (FEEDBACK[j.url]||{}).timestamp;
+  if (!items.length) { wrap.innerHTML = `<p class="sub" style="padding:10px">Nothing marked ${esc(MARKS[state.tab] || state.tab)} yet.</p>`; return; }
+  wrap.innerHTML = table(['When', 'Company / role', 'Location', 'Score', 'Posting', ''], items.map(j => {
+    const mark = state.feedback[j.url];
+    const when = mark.day || (markTime(mark) ? localDay(new Date(markTime(mark))) : '—');
     return `<tr>
-      <td>${ts ? new Date(ts).toLocaleDateString() : '—'}</td>
-      <td><div><strong>${esc(j.company)}</strong></div><div class="truncate">${esc(j.title||'')}</div></td>
-      <td>${esc(j.location||'—')}</td>
-      <td class="score">${j.score||'—'}</td>
-      <td><a class="small-link" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer">view JD</a></td>
-      <td><button class="btn" onclick="setStatus('${esc(j.url)}', 
-```
+      <td>${esc(when)}</td>
+      <td><strong>${esc(j.company)}</strong><div class="truncate">${esc(j.title || '')}</div></td>
+      <td>${esc(j.location || '—')}</td>
+      <td class="score">${esc(j.score ?? '—')}</td>
+      <td>${jdLink(j, 'View JD')}</td>
+      <td><button class="btn btn-small" data-mark="${esc(state.tab)}" data-url="${esc(j.url)}">Undo</button></td>
+    </tr>`;
+  }).join(''));
+}
 
-# APPENDIX D — Scheduled task prompt content
+function markTabs() {
+  document.querySelectorAll('[data-tab]').forEach(t => t.setAttribute('aria-pressed', String(t.dataset.tab === state.tab)));
+  document.querySelectorAll('[data-apps-filter]').forEach(t => t.setAttribute('aria-pressed', String(t.dataset.appsFilter === state.appsFilter)));
+}
 
-```markdown
-# Appendix D — Scheduled Task Prompt Template
+async function copyText(text, button) {
+  try {
+    await navigator.clipboard.writeText(text);
+    button.textContent = 'Copied';
+  } catch {
+    const sel = window.getSelection();
+    const code = button.previousElementSibling;
+    if (sel && code) { const r = document.createRange(); r.selectNodeContents(code); sel.removeAllRanges(); sel.addRange(r); }
+    button.textContent = 'Press Ctrl+C';
+  }
+  setTimeout(() => { button.textContent = 'Copy path'; }, 1800);
+}
 
-Use this as the literal `prompt` field when calling `mcp__scheduled-tasks__create_scheduled_task` in Step 11 of the mega-prompt. Interpolate `{MOUNT}` (user's mounted folder path) and `{ARTIFACT_ID}` (the id returned from `create_artifact` in Step 12).
+// ---------- events ----------
+document.addEventListener('click', e => {
+  const mark = e.target.closest('[data-mark]');
+  if (mark) { setStatus(mark.dataset.url, mark.dataset.mark); return; }
+  const tab = e.target.closest('[data-tab]');
+  if (tab) { state.tab = tab.dataset.tab; safely('activity log', renderLog); markTabs(); return; }
+  const filter = e.target.closest('[data-apps-filter]');
+  if (filter) { state.appsFilter = filter.dataset.appsFilter; safely('applications', renderApplications); markTabs(); return; }
+  const copy = e.target.closest('[data-copy]');
+  if (copy) copyText(copy.dataset.copy, copy);
+});
+// Redraw charts when the viewer's theme changes, so axis and bar colors follow it.
+const redrawCharts = () => { if (state.jobs.length) safely('charts', renderCharts); };
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', redrawCharts);
+new MutationObserver(redrawCharts).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
----
+// ---------- boot ----------
+(function boot() {
+  try {
+    const baked = JSON.parse(document.getElementById('baked-data').textContent || '{}');
+    state.jobs = (Array.isArray(baked.jobs) ? baked.jobs : []).filter(isObj);
+    state.applications = (Array.isArray(baked.applications) ? baked.applications : []).filter(isObj);
+    state.floor = Number(baked.floor) || 75;
+    state.star = Number(baked.star) || 85;
+    state.lifetime = isObj(baked.lifetime) ? baked.lifetime : null;
+    state.generatedAt = baked.generated_at || null;
+    if (isObj(baked.feedback)) mergeMarks(baked.feedback);
+  } catch (e) {
+    const err = document.getElementById('err-state');
+    err.hidden = false;
+    err.textContent = 'The dashboard data block is unreadable. Ask Claude to re-run bake.py and republish the dashboard.';
+  }
+  mergeMarks(localMarks);
+  const total = state.lifetime ? Number(state.lifetime.scanned) || 0 : state.jobs.length;
+  const stamp = state.generatedAt ? new Date(state.generatedAt).toLocaleString() : 'not yet';
+  document.getElementById('status-text').textContent = `${plural(total, 'job')} in the ledger · updated ${stamp}`;
+  connectDb();   // start before drawing, so a drawing error can't keep marks from syncing
+  renderAll();
+})();
+</script>
+<!-- job-bot:end -->
+````
+<!-- /appendix -->
 
-You are running {USER_FIRSTNAME}'s daily job-search workflow. Execute every step in order. Steps 5 and 6 are non-negotiable — the run is not complete until they finish.
+## Appendix H — `workshop/deep_tailor.md`
 
-# STEP 1 — Mount the working folders
-Call `mcp__cowork__request_cowork_directory` with `path: "{MOUNT_PARENT}"`. Then call it again with `path: "{MOUNT}"` if the parent didn't cover the Job Bot subfolder. The bot needs write access to both `{MOUNT}/Job Bot/` and `{MOUNT}/daily job brief/` (or equivalent date-folder location).
-
-# STEP 2 — Execute the playbook
-Read and execute the full instructions in `{MOUNT}/Job Bot/config/daily_brief_prompt.md`. That file is the canonical playbook — follow every section in order. Use WebSearch + WebFetch as the primary research tools. Use python-docx (via bash) to generate .docx files with proper one-page-full formatting per the playbook's verification block.
-
-# STEP 3 — Tailored materials
-For each qualified job, write `<company>_jd.txt`, `<company>_score.md`, `<company>_cover_letter.docx`, and `<company>_resume_tailored.docx` into `{MOUNT}/daily job brief/YYYY-MM-DD/`. Verify the resume is one page AND fills ≥93% per the playbook before declaring the deliverable complete.
-
-# STEP 4 — Persist the ledger
-Append every JD examined today (qualified or dropped) as a single-line JSON record to `{MOUNT}/Job Bot/briefs/all_jobs.jsonl`. Schema in playbook §8b. Also write a per-date `seen_jobs.json` to today's date folder for dedupe.
-
-# STEP 5 — Bake the dashboard (DO THIS EVERY RUN)
-Run the bake script via bash:
-```bash
-python3 "{MOUNT}/Job Bot/dashboard/bake.py"
-```
-This reads `briefs/all_jobs.jsonl`, `briefs/feedback.json`, and `applications/applications.jsonl` and embeds them as a baked-data JSON block in `dashboard/dashboard.html`. The dashboard reads from this block on open, so the user sees fresh data without depending on a live disk read. Idempotent — re-running just replaces the previous baked block.
-
-**Verify the bake worked:** read the first 5 lines of `dashboard/dashboard.html` and confirm the baked-data script tag contains today's `scored_date` entries. If it doesn't, the bake silently failed — investigate before moving to Step 6.
-
-# STEP 6 — Update the persistent artifact (DO THIS EVERY RUN)
-Call `mcp__cowork__update_artifact` with:
-- `id: "{ARTIFACT_ID}"` — this is the single canonical artifact, NEVER `create_artifact` with a new id
-- `html_path: "{MOUNT}/Job Bot/dashboard/dashboard.html"`
-- `mcp_tools: ["mcp__workspace__bash", "mcp__cowork__present_files"]`
-- `update_summary`: a one-line description of today's run (e.g., "May 18 run — 2 qualified, top match Slalom Senior Consultant at 87")
-
-If `update_artifact` errors, do not declare the run complete. Diagnose and retry.
-
-# STEP 7 — Chat summary
-End the session with a one-paragraph summary: count of qualified jobs, top company + score if any, count of postings examined, count dropped on freshness vs fit. User opens the dashboard from the notification.
-
-# Constraints
-- Never fabricate JDs, posting dates, or company news
-- Never click apply or submit on the user's behalf
-- Never call `create_artifact` — there is exactly one persistent artifact and it gets updated, not recreated
-- Cap runtime around 12 minutes
-
-```
-
-# APPENDIX E — Deep-tailor workbook content
-
-```markdown
+<!-- appendix: workbook_deep_tailor.md -->
+````markdown
 # Deep-Tailor Workbook
 
-The workshop setup gets your Job Bot running with sensible defaults. This workbook takes the bot from "running" to "calibrated to you." Plan ~30 minutes total. You can do all eight sections at once or work through them across the week — the bot picks up your changes on the next morning run.
+Setup gets your Job Bot running on sensible defaults. This workbook calibrates it to you in about 30 minutes. Do all eight sections at once or spread them across the week; the next run picks up each change.
 
-**How to use this:** Open this file. For each section, paste the block into Cowork as a chat message. Claude reads your answer and writes the change to the right config file. No coding required.
+**How to use it:** for each section, fill in the brackets and paste the block into a chat in the Claude desktop app with your `Job Bot` folder connected. Claude writes the change to the right file.
+
+**Short on time?** Do them in this order: 8 (project ledger, the biggest scoring lift), 3 (network contacts), 1 (anti-keywords, cuts noise right away), 4 (cover-letter voice). The rest can wait.
 
 ---
 
 ## Section 1 — Anti-keywords (5 min)
 
-What roles should the bot NEVER surface, even if they score above 75? Common examples: roles requiring active TS/SCI clearance you don't hold, certain industries (gambling, tobacco, cannabis), or job titles you're done with (Sales Development Rep, recruiting agency roles).
+Postings that contain these words drop before scoring, whatever their score. Think clearance requirements you don't hold, industries you'd skip, or titles you're done with.
 
-**Paste this into Cowork:**
-
-> Add these anti-keywords to my Job Bot's preferences.md. Any posting containing these words or phrases gets auto-dropped before scoring:
+> Add these anti-keywords to my Job Bot's preferences.md, keeping the ones already there:
 >
-> [Your list, one per line. Examples:]
-> - "Active Top Secret clearance"
-> - "Cannabis"
-> - "10+ years"
-> - "Sales Development Representative"
-> - "Recruitment agency"
->
-> Add them to the existing anti-keywords section, don't replace what's there.
+> - [e.g. "Active Top Secret clearance"]
+> - [e.g. "Sales Development Representative"]
+> - [e.g. "10+ years"]
+> - [e.g. "Recruitment agency"]
 
 ---
 
 ## Section 2 — Compensation floor (2 min)
 
-What's your minimum acceptable base salary? Roles below this get dropped regardless of fit. Leave blank if you don't want to filter by comp.
+Roles that publish a range below your floor drop. Roles without a published range still go through.
 
-**Paste this into Cowork:**
-
-> Add a compensation floor to my Job Bot's preferences.md and update the scoring/drop logic in daily_brief_prompt.md:
->
-> Minimum base salary: $[number]
->
-> Drop any posting where `comp_low < [number]` AND the JD explicitly publishes a comp range. Don't drop based on inferred comp.
+> Set the compensation floor in my Job Bot's preferences.md to $[number] base salary. Drop a posting only when it publishes a range and the bottom of that range is below that number.
 
 ---
 
-## Section 3 — Named network contacts (10 min)
+## Section 3 — Network contacts (10 min)
 
-This is the highest-leverage tuning. Tell the bot who you know at which target companies. The Network score (10 of 100 pts) goes to full credit for any company where you have a named contact — meaning roles at those companies become much more likely to qualify.
+The highest-leverage tuning. A named contact earns full network points (10 of 100) on every role at that company, which pushes borderline roles over the line.
 
-**Paste this into Cowork:**
-
-> Add these named network contacts to my Job Bot's preferences.md under the Network signals section. For each, the bot should award full 10 Network points to any role at that company:
+> Add these to the Network contacts section of my Job Bot's preferences.md:
 >
-> [List one per line. Format: Company — Person — Relationship]
-> Examples:
-> - Wipfli — {Example Contact 1} — {USER_MBA_PROGRAM} MBA classmate, class of 2025
-> - Slalom — {Example Contact 2} — Former coworker at Lockheed Martin
-> - Anthropic — {Example Contact 3} — Met at AI Builders Meetup Denver, exchanged business cards
-> - Deloitte — Anyone — {USER_MBA_PROGRAM} has 12 alumni at the firm per LinkedIn search
+> - [Company] — [Person] — [Relationship]
+> - [e.g. Slalom — Jordan Lee — Daniels MBA classmate, Class of 2026]
+> - [e.g. Deloitte — Anyone — 12 DU alumni at the firm on LinkedIn]
 >
-> Use "Anyone" when you just have an alumni / institutional connection without a specific person yet.
+> "Anyone" means an alumni or school connection without a specific person yet.
 
 ---
 
 ## Section 4 — Cover-letter voice (5 min)
 
-The bot defaults to a tight, active-voice style. Tune it to sound like you.
+The default is tight and active. Tune it to sound like you.
 
-**Paste this into Cowork:**
-
-> Update the cover letter generation rules in my Job Bot's daily_brief_prompt.md. My preferred voice:
+> Update the style rules in my Job Bot's master/cover_letter_template.md:
 >
-> - Tone: [pick one] Confident / Conversational / Warm-formal / Sharp / Academic
-> - Opener style: [pick one] Lead with the angle / Lead with a concrete accomplishment / Lead with why this firm specifically
-> - First-person frequency: [pick one] Heavy "I" / Balanced / Strip most "I"s
-> - Hedging tolerance: [pick one] Zero hedging / Some hedging on speculative claims is fine
-> - Ban list (add to my current ban list — leverage, robust, transformative, etc.):
->   - [Your additional words to ban]
+> - Tone: [Confident / Conversational / Warm-formal / Sharp / Academic]
+> - Opener: [Lead with the angle / Lead with an accomplishment / Lead with why this firm]
+> - First person: [Heavy "I" / Balanced / Minimal "I"]
+> - Hedging: [None / Some on speculative claims]
+> - Words to avoid, on top of the current list: [your list]
 >
-> Generate one example cover letter using my preferred voice for a hypothetical [your target role title]. I'll review before locking it in.
+> Then draft one sample letter in that voice for a [target role title] role so I can check it.
 
 ---
 
-## Section 5 — Score-rubric weight tuning (3 min)
+## Section 5 — Scoring weights (3 min)
 
-Default weights: role keyword 35, experience 20, location 15, domain 10, skills 10, network 10. Rebalance if your situation is unusual (e.g., career switcher should down-weight experience; relocator should down-weight location).
+Defaults: role keywords 35, experience 20, location 15, domain 10, skills 10, network 10. Career switchers often down-weight experience; relocators down-weight location.
 
-**Paste this into Cowork:**
-
-> Rebalance the match scoring rubric in my Job Bot's preferences.md. My new weights (must total 100):
+> Change the scoring weights in my Job Bot's preferences.md to (total 100):
 >
-> - Role keyword overlap: [number] pts
-> - Experience fit: [number] pts
-> - Location fit: [number] pts
-> - Domain fit: [number] pts
-> - Skill overlap: [number] pts
-> - Network: [number] pts
+> - Role keyword overlap: [number]
+> - Experience fit: [number]
+> - Location fit: [number]
+> - Domain fit: [number]
+> - Skill overlap: [number]
+> - Network: [number]
 >
-> Keep the surface threshold at 75 and star threshold at 85.
+> Keep the surface and star thresholds as they are.
 
 ---
 
 ## Section 6 — Industries to exclude (2 min)
 
-Hard exclusions at the industry level. Different from anti-keywords — this drops roles based on the company, not the JD text.
+Drops roles by the company's industry rather than the posting's wording.
 
-**Paste this into Cowork:**
-
-> Add these industries to my Job Bot's exclusion list in preferences.md. Any company whose primary industry matches gets auto-dropped:
+> Add these to Industries to exclude in my Job Bot's preferences.md, and check each company's primary industry before scoring:
 >
-> [Your list, one per line. Examples:]
-> - Gambling / casinos
-> - Tobacco
-> - Cannabis
-> - For-profit prisons
-> - Multi-level marketing (MLM)
-> - Recruiting agencies / staffing firms (unless explicitly target)
->
-> When the bot encounters a company, it should look up the industry classification before scoring.
+> - [e.g. Gambling]
+> - [e.g. Tobacco]
+> - [e.g. Staffing agencies]
 
 ---
 
 ## Section 7 — Stepping-stone companies (3 min)
 
-For these companies, the bot surfaces sub-75 roles (65–74) with a yellow "Stepping stone" badge instead of dropping. Use for high-value firms where you'd take a junior-tier role to get inside.
+At these companies, roles scoring 65 or more but under your threshold still show up, with a yellow badge. Use it for firms where you'd take a junior role to get in the door.
 
-**Paste this into Cowork:**
-
-> Add these to the Stepping-stone tier in my Job Bot's preferences.md. For each, sub-75 roles (65–74) should surface in the brief with a stepping-stone badge instead of being dropped:
+> Add these to the Stepping-stone tier in my Job Bot's preferences.md:
 >
-> [Your list, one per line. Examples:]
-> - Anthropic
-> - OpenAI
-> - McKinsey
-> - BCG
-> - [Your dream firm here]
->
-> Anything below 65 still drops, even at these companies.
+> - [e.g. McKinsey]
+> - [e.g. Anthropic]
+> - [Your dream firm]
 
 ---
 
-## Section 8 — Project ledger (10 min — the heaviest)
+## Section 8 — Project ledger (10 min)
 
-Replace the template entries in `master/projects.md` with your own. The bot uses this for the Selected Projects section in tailored resumes and the bridge paragraph in cover letters. Each project needs: name, dates, role, what you built, quantified outcomes, technologies, and `fits:` tags so the bot knows which JDs to surface it for.
+Runs use these projects for the Selected Projects section of each tailored resume and the cover letter's bridge paragraph.
 
-**Paste this into Cowork:**
-
-> Replace the template entries in my Job Bot's `master/projects.md` with these projects:
->
-> [For each project, fill out:]
+> Replace the template entries in my Job Bot's master/projects.md with these:
 >
 > ### [Project name]
-> - Dates: [Start – End or Ongoing]
-> - Role: [Your role on the project]
-> - Built: [1-2 sentences on what you built]
-> - Why it matters: [1 sentence on what it demonstrated]
-> - Tech / methodology: [tools, frameworks, methods]
-> - fits: [comma-separated tags matching the JD types the bot should surface this for, e.g., AI consulting, finance transformation, supply chain, GenAI]
-> - Verify before use: [any numbers or claims that need confirmation before going on a resume]
+> - Dates: [Start – End, or Ongoing]
+> - Role: [Your role]
+> - Built: [1–2 sentences]
+> - Why it matters: [1 sentence, with a number]
+> - Tech: [tools, methods]
+> - fits: [role types, e.g. AI consulting, finance transformation, supply chain]
+> - Verify before use: [numbers to confirm]
 >
-> Repeat for 3–6 projects. Aim for a mix of professional, academic, and personal projects.
+> [Repeat for 3–6 projects across professional, academic, and personal work.]
 
 ---
 
-## After completing the workbook
+## When you're done
 
-Tell Claude in chat: "Re-run my Job Bot now with the updated config — I want to see how the new weights and contacts change today's scoring." The bot will re-score the current ledger entries and refresh the dashboard.
-
-If you don't have time to complete all eight sections, prioritize in this order:
-1. Section 8 — Project ledger (biggest scoring impact)
-2. Section 3 — Named network contacts (10-pt boost on connected roles)
-3. Section 1 — Anti-keywords (reduces noise immediately)
-4. Section 4 — Cover-letter voice (raises quality of every deliverable)
-5. Sections 2, 5, 6, 7 — tuning, can wait
-
-Total time invested = ~30 min for a meaningfully more precise tool.
-
-```
-
----
-
-*End of setup prompt. Total ~6,000 words including appendices.*
+Tell Claude: "Re-run my Job Bot now with the updated settings." The run re-scores the last week's open postings against the new weights and contacts, then refreshes the dashboard.
+````
+<!-- /appendix -->

@@ -1,28 +1,21 @@
-# Personal data — never commit
-master/resume_master.*
-master/projects.md
-master/cover_letter.docx
+# Personal data, if you keep your Job Bot folder in git
+master/
 applications/
-briefs/all_jobs.jsonl
-briefs/feedback.json
-briefs/index.json
+briefs/
 config/preferences.md
+daily/
+workshop/
 dashboard/dashboard.html
-github_repo/
-
-# Per-date job folders
-daily job brief/
-* daily job brief/
+*.docx
+*.pdf
 
 # Build artifacts
 __pycache__/
 *.pyc
-*.pyo
-.~lock.*
 *.tmp
-/tmp/
+.~lock.*
 
-# OS / IDE
+# OS / editor
 .DS_Store
 Thumbs.db
 .vscode/
