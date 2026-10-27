@@ -1,85 +1,85 @@
 # Job Bot
 
-An automated daily job-search workflow built on Cowork scheduled tasks. Searches user-defined target companies every weekday morning, scores each posting against a master resume on a 100-point rubric, generates tailored cover letters and resumes for the top matches, and updates a persistent dashboard you can open from your Cowork sidebar.
+A daily job search that runs in the Claude desktop app. Each weekday morning it checks your target companies' career sites for roles posted in the last 7 days, scores each one against your resume on a 100-point rubric, drafts a tailored one-page resume and a cover letter for the best matches, and refreshes a dashboard you open from Claude.
 
-## What it does
+It doesn't apply for you. You review the drafts and submit on the company's site.
 
-- Searches a list of 20–60 target companies every weekday at 7 AM
-- Verifies each posting is on a company-owned career site (no LinkedIn / Indeed aggregators) and was posted within the last 7 days
-- Scores each candidate role against your resume across six dimensions (role keyword overlap, experience fit, location fit, domain fit, skill overlap, named network)
-- Generates a one-page-full tailored resume and a 250-word cover letter for each role that clears the score floor
-- Logs every examined posting to a JSON ledger; the dashboard reads from that ledger
-- Tracks application lifecycle (submitted, acknowledged, interviewing, rejected, offer) via optional Gmail scanning
-- Refreshes a live dashboard artifact in your Cowork sidebar with KPIs, daily volume trend, location distribution, top JD skills, active pipeline, and applications tracker
+## What you need
 
-## Human in the loop
+- A paid Claude plan (Pro, Max, Team, or Enterprise). Scheduled tasks aren't on the free plan.
+- The Claude desktop app, open on a computer that's awake when the run fires. A missed run fires once the app opens again.
+- Claude Opus 5.5, selected for setup and for the scheduled task.
+- Your resume (.docx or .pdf) and 20–60 target companies.
 
-The bot does not auto-apply. It handles discovery, scoring, and first-draft generation. Everything that requires judgment stays with you:
+## Setup (about 10 minutes)
 
-- Create the ATS / candidate profile on each company portal yourself
-- Move the chat to [Claude in Chrome](https://claude.ai/chrome) when it's time to fill out Workday, Greenhouse, or Lever forms — the dashboard hands off, Claude in Chrome drives the form
-- Review every tailored resume and cover letter before submission. For JDs with unusual asks, open the resume in Word and run another tailoring pass with Claude
-- Hit Submit yourself
+1. Open the Claude desktop app, start a new chat, and pick Claude Opus 5.5 in the model menu.
+2. Open [`setup_prompt.md`](setup_prompt.md), click **Copy raw file**, and paste it into the chat.
+3. Answer four questions, upload your resume, and paste your company list.
+4. Connect a folder when Claude asks. Documents/Claude works well.
+5. Claude builds your files, publishes your dashboard, schedules the daily run, and runs the first search.
 
-The bot surfaces and prepares. You apply.
+**Set up in May?** Re-run setup and point it at the same folder. It keeps your ledger, resume, projects, and preferences, and sets up a new playbook, dashboard, and scheduled task. Delete the old task under Scheduled so two runs don't fire.
 
-## Setup — workshop / classroom path
+## Each morning
 
-This repo includes a paste-and-go setup prompt designed for non-technical users.
+Open the dashboard. Each match shows its score, why it fits, and where its tailored resume and cover letter landed (`Job Bot/daily/YYYY-MM-DD/`). Mark it Applied, Save, or Skip. The next run picks up your marks: applied jobs move into the applications tracker, and skipped ones stay out of future briefs. With Gmail connected, the tracker also follows recruiter replies. When you're ready to apply, Claude in Chrome can work through Workday or Greenhouse forms with you.
 
-1. Open a fresh [Cowork](https://claude.ai/cowork) session
-2. Open [`setup_prompt.md`](setup_prompt.md), copy the entire contents
-3. Paste into the Cowork chat
-4. Claude will interview you (5 questions, ~3 minutes), ask for your resume (upload as .docx or .pdf), and ask for your target company list (20–60 names, one per line)
-5. Wait ~2 minutes for setup to finish
-6. A persistent dashboard artifact appears in your sidebar
-7. First scheduled run is the next weekday at 7:00 AM local time
+## How matches are scored
+
+| Dimension | Points |
+|---|---|
+| Role keyword overlap (title synonyms count) | 35 |
+| Experience fit | 20 |
+| Location fit | 15 |
+| Domain fit | 10 |
+| Skill overlap | 10 |
+| Network (named contact, alumni, referral) | 10 |
+
+You pick the floor at setup: 75 by default, 85 for strict, 65 for relaxed. Scores of 85 and up get a star. Two cases surface roles scoring 65 or more but under the floor: companies on your stepping-stone list, and companies where you have a named contact.
+
+## What the bot holds to
+
+- **Employer links only.** Apply links go to the company's careers site or its applicant tracking system (Workday, Greenhouse, Lever, Ashby, iCIMS). Job boards can help find a posting; they never become the link.
+- **Fresh postings.** Posted within 7 days, with a date it can verify.
+- **One full page.** Tailored resumes fit exactly one page and fill at least 93% of it. The run converts each one to PDF and measures.
+- **Your facts.** Tailoring reorders and rephrases your master resume. Every number, title, and credential comes from it.
+- **Three a day, at most.** A thin day stays thin.
+
+## Tuning
+
+Tell Claude what to change, or edit `Job Bot/config/preferences.md`. [`workbook_deep_tailor.md`](workbook_deep_tailor.md) walks through eight short tune-ups; the project ledger and network contacts move scores the most.
+
+## Troubleshooting
+
+- **No run this morning.** The app was closed or the computer was asleep. Scheduled in the Claude sidebar shows run history and has Run now.
+- **Runs stop to ask for approval.** Run the task once from Scheduled and approve its tools, or turn on automatic approval in the task's settings.
+- **Hitting usage limits on Pro.** Switch the scheduled task to Claude Sonnet 5.5 or trim the company list toward 20.
+- **Dashboard marks don't reach the next run.** Your account doesn't offer artifact data storage yet, so marks stay in that browser. Tell Claude "mark Slalom applied" instead.
 
 ## What's in this repo
 
 | File | Purpose |
 |---|---|
-| `setup_prompt.md` | The 15-step paste-and-go prompt. Run-once to bootstrap a personal Job Bot. |
-| `playbook_template.md` | The canonical daily playbook the scheduled task executes each morning. Parameterized — the setup prompt fills in your selectivity floor, mount path, and artifact ID. |
-| `dashboard.html` | The persistent dashboard template. Empty baked-data block; `bake.py` fills it on every run. |
-| `bake.py` | Reads `all_jobs.jsonl` + `applications.jsonl` + `feedback.json` and embeds them as a JSON script tag in `dashboard.html`. Idempotent. |
-| `cover_letter_template.md` | The cover letter structure. Bracketed sections get replaced per role. |
-| `preferences_template.md` | Where your target companies, role keywords, geo rules, scoring rubric, and dealbreakers live. |
-| `projects_template.md` | Your project ledger. Bot reads this to populate the Selected Projects section in tailored resumes. |
-| `workbook_deep_tailor.md` | Optional 30-minute post-setup tuning workbook. Eight sections: anti-keywords, comp floor, named contacts, cover-letter voice, rubric weight tuning, industries to exclude, stepping-stone companies, project ledger. |
+| `setup_prompt.md` | The paste-and-go setup. Carries full copies of the files below as appendices. |
+| `playbook_template.md` | What each daily run does: search, score, tailor, record, refresh the dashboard. |
+| `scheduled_task_prompt.md` | The short prompt the scheduled task runs; it points at the playbook. |
+| `preferences_template.md` | Targets, keywords, geography, scoring, and dealbreakers. |
+| `projects_template.md` | Project ledger that feeds Selected Projects and the cover letter's bridge paragraph. |
+| `cover_letter_template.md` | Cover letter structure and style rules. |
+| `dashboard.html` | The dashboard. `bake.py` fills its data block. |
+| `bake.py` | Embeds the ledger, feedback, and applications in `dashboard.html`. |
+| `workbook_deep_tailor.md` | Optional 30-minute tuning workbook. |
+| `build_setup_prompt.py` | Rebuilds the appendices in `setup_prompt.md` after you edit a source file. |
 
-## Match scoring (default)
+## Editing the templates
 
-| Dimension | Weight |
-|---|---|
-| Role keyword overlap | 35 |
-| Experience fit | 20 |
-| Location fit | 15 |
-| Domain fit | 10 |
-| Skill overlap | 10 |
-| Network (named alumni / personal contact) | 10 |
-
-Surface threshold: 75. Star threshold: 85. Anything below 75 drops, with two exceptions: a stepping-stone tier for high-value companies (65–74 surfaces with a yellow badge) and a network override (65–74 with a verified personal contact promotes to qualified).
-
-## Hard rules (non-negotiable)
-
-- **Source rule:** Apply links must point at the company's own career site. Aggregators are disqualified.
-- **Freshness rule:** Postings must be dated within the last 7 days. If the date can't be verified, the role drops.
-- **Page-fill rule:** Tailored resumes must be exactly one page AND fill ≥93% of the page. The bot converts to PDF and verifies programmatically.
-- **Top 3, never padded.** If fewer than 3 roles qualify, the brief shows what qualifies. The bot will not fill slots to look generous.
-
-## Architecture notes
-
-- Built on Cowork scheduled tasks (cron-based, runs in isolated sessions)
-- Uses `WebSearch` + `WebFetch` for posting discovery; `python-docx` via bash for resume generation; `pypdf` + `pdfplumber` for one-page verification
-- Optional Gmail MCP integration for application-status tracking (rejection / acknowledgment / interview classification from inbox)
-- Dashboard is a single self-contained HTML file with embedded CSS + JS, baked data injected as a `<script type="application/json">` tag
-- No backend, no database — JSONL ledger is the source of truth
+`setup_prompt.md` embeds the other files, so edit the source file, then run `python build_setup_prompt.py`. `python build_setup_prompt.py --check` exits non-zero when the prompt is out of date.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
 
 ## Credits
 
-Created by [Brian Caputo](https://github.com/bwcaputo) as a workshop project for an MBA cohort, May 2026. Contributions welcome.
+Built by [Brian Caputo](https://github.com/bwcaputo) for his MBA cohort at the University of Denver, May 2026. Updated October 2026 for the merged Claude app and Claude Opus 5.5. Contributions welcome.

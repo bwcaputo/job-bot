@@ -1,106 +1,84 @@
 # Job Search Preferences — {USER_NAME}
 
-Edit this file anytime. The daily bot reads it on every run.
+Every run reads this file. Edit it anytime, or tell Claude what to change.
 
 ## Candidate snapshot
-- {SHORT BIO — e.g., "Full-time MBA candidate, Class of 2027, concentrating in Strategy"}
-- {YEARS OF EXPERIENCE — e.g., "8 years in operations management"}
-- {CURRENT FOCUS — e.g., "Headed into AI consulting / management consulting"}
-- {HOME CITY}, {STATE}. {REMOTE PREFERENCE — e.g., "Remote-US OK. No relocation."}
+- {One line, e.g. "Full-time MBA, Class of 2027, five years in supply chain operations"}
+- Home base: {City, State}
+- Contact line for cover letters: {email} | {phone} | {LinkedIn URL}
 
-## Network signals
-Bot uses these to award Network points (see scoring section). Expand as the search develops.
+## Dashboard
+- URL: {DASHBOARD_URL}
+- Schedule: {e.g. Weekdays at 7:00 AM}
 
-- {ALUMNI / INSTITUTIONAL NETWORK — e.g., "MBA program alumni at target firms"}
-- {NAMED CONNECTIONS BY COMPANY}
-- {AFFINITY GROUPS — e.g., "Veteran network", "Society of Women Engineers"}
-- {MBA COHORT REFERRALS — log as you identify them}
+## Target function and roles
+- Function: {e.g. Finance}
+- Roles, in priority order: {e.g. FP&A, Strategic Finance, Corporate Development}
 
-## Target roles (ranked)
-1. {PRIMARY ROLE TARGET — e.g., "AI consulting — Senior Consultant / Consultant / Associate"}
-2. {SECONDARY ROLE TARGET}
-3. {TERTIARY ROLE TARGET}
+## Role keywords
+Search phrases, 8–12, with common variants of each title.
+- {e.g. "FP&A Manager", "Senior Financial Analyst", "Finance Business Partner"}
 
 ## Title synonym map
-When matching JD titles against role keywords, the bot treats these as equivalents. Catches AI-startup naming conventions and Big 4 internal title variants.
+Titles that count as a match for the roles above.
+- {e.g. "Finance Business Partner" → FP&A}
+- {e.g. "Customer Engineer" / "Implementation Consultant" → Solutions Engineer}
 
-- "AI Partner Lead" / "AI Partner" → AI consultant (Senior)
-- "Member of Technical Staff" / "MTS" / "Founding Engineer" → Solutions Engineer / Forward-deployed
-- "Customer Engineer" / "Field Engineer" / "Implementation Engineer" → Solutions Engineer
-- "AI Transformation Consultant" / "GenAI Consultant" → AI consultant
-- "Solutions Architect" / "Sales Engineer" (with AI/LLM JD content) → Forward-deployed engineer
-- {ADD YOUR OWN MAPPINGS}
+## Anti-keywords
+Postings containing these drop before scoring.
+- {e.g. "10+ years", "Director", "Vice President"}
+- {e.g. "Active TS/SCI clearance" unless you hold one}
 
-## Role keywords (used for search and matching)
-- {ROLE KEYWORD FAMILY 1 — e.g., "AI consultant", "AI consulting", "applied AI"}
-- {ROLE KEYWORD FAMILY 2 — e.g., "Senior Consultant", "Associate Consultant"}
-- {ROLE KEYWORD FAMILY 3}
-
-## Anti-keywords (filter out)
-- "Software Engineer", "SDE", "DevOps", "SRE" — pure dev roles (unless target)
-- Any "10+ years" or "Director / Principal / VP" minimums
-- {ADD YOUR OWN}
-
-## Target companies (focused search every run)
-
-### {CATEGORY 1 — e.g., AI consulting}
-- {COMPANY 1}
-- {COMPANY 2}
-- {COMPANY 3}
-
-### {CATEGORY 2 — e.g., ERP consulting}
-- {COMPANY 1}
-- {COMPANY 2}
-
-### {CATEGORY 3 — e.g., AI labs and major tech (relocation OK)}
-- {COMPANY 1}
-- {COMPANY 2}
-
-Aim for 20–60 total. More than 60 strains the daily search budget (~30 WebSearch queries per run).
-
-## Source rule (HARD)
-Only company-owned career sites (or the company's hosted ATS subdomain — Workday/Greenhouse/iCIMS/Lever/Ashby/etc.) count as a primary source. Aggregators (LinkedIn, Indeed, Glassdoor, ZipRecruiter) are disqualified as apply links. Aggregators may be used only to discover a candidate URL or cross-check a posting date.
-
-## Freshness rule (HARD)
-Only postings dated within the last 7 calendar days qualify. If posting date can't be verified, skip the job.
-
-## Geography rules
-- {YOUR HOME CITY METRO}: yes
-- Remote-US: yes
-- Hybrid {YOUR HOME CITY}: yes
-- On-site outside {YOUR HOME CITY} metro: {yes/no}
-- Travel: up to {X}% acceptable for consulting roles
-
-## Match scoring (0–100)
-- 35 pts: role keyword overlap with title + JD (uses the title synonym map above)
-- 20 pts: years-of-experience fit (penalize >7 yr minimums)
-- 15 pts: location fit
-- 10 pts: domain fit
-- 10 pts: skill overlap
-- 10 pts: network (named alumni / personal contact at the firm)
-
-Surface threshold: 75. Star threshold: 85.
+## Target companies
+One per line, 20–60 total. Add `also_search_as:` for alternate names. Runs record each company's careers site as `verified:` once they find it.
+- {Company}
+- {e.g. PwC (also_search_as: PricewaterhouseCoopers)}
 
 ## Stepping-stone tier
-For these companies, the bot surfaces sub-75 roles (65–74) with a yellow "Stepping stone" badge instead of dropping. Use for high-value firms where you'd take a junior-tier role to get inside.
+Companies where a role scoring 65 or more but under the surface threshold still shows up, with a yellow badge.
+- None yet
 
-- {DREAM COMPANY 1}
-- {DREAM COMPANY 2}
+## Network contacts
+A named contact at a company earns full network points (10) on its roles. Format: Company — Person — Relationship.
+- None yet
 
-## Auto-widen rule
-Target ~3 qualified jobs per day. If fewer than 3 from the named target-company list hit the score floor on a given run, the bot may widen to companies NOT on the list, under these conditions:
-- The resume-to-JD match still scores ≥ floor by the rubric (no exceptions, no padding)
-- The role is in one of the target role categories above
-- Source rule and freshness rule still apply
-Never surface a sub-floor job. Quality over quantity remains the rule.
+## Geography
+- {Metro}: yes
+- Remote-US: yes
+- Hybrid {Metro}: yes
+- On-site elsewhere: {yes/no}
+- Travel: up to {X}%
 
-## Application etiquette rules
-- Cover letter: 250 words max, active voice, no AI-tells
-- Resume tailoring: reorder bullets to match JD priorities, swap keyword variants where honest, never fabricate
-- Resume: one full page, ≥93% fill ratio (bot verifies via PDF conversion)
+## Scoring (0–100)
+- 35: role keyword overlap with the title and description (title synonyms count)
+- 20: experience fit (penalize minimums above 7 years)
+- 15: location fit
+- 10: domain fit
+- 10: skill overlap
+- 10: network (named contact, alumni at the firm, referral)
+
+Surface threshold: {FLOOR}
+Star threshold: 85
+
+## Widening
+Aim for about 3 qualified roles a day. When named targets come up short, runs may search beyond them; those roles meet the same threshold, source, and freshness rules.
+
+## Source and freshness
+- Apply links go to the employer's careers site or its applicant tracking system. Job boards only help find postings.
+- Postings must be dated within the last 7 days.
+
+## Writing rules
+- Cover letter: 250 words max, active voice, specific to the posting.
+- Resume: one full page (93% or more), tailored from the master resume, with every fact taken from it.
 
 ## Dealbreakers
-- Roles requiring credentials you don't hold (CPA, active TS/SCI clearance, etc.)
-- W-2 contract roles under 6 months
-- Commission-only comp
-- {YOUR DEALBREAKERS}
+- Credentials you don't hold (CPA, active clearance, and so on)
+- W-2 contracts under 6 months
+- Commission-only pay
+- {Add your own}
+
+## Compensation floor
+- None set
+
+## Industries to exclude
+- None set
