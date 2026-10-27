@@ -5,8 +5,8 @@ setup_prompt.md is what people paste into Claude, so it carries full copies of
 the templates, the playbook, bake.py, and dashboard.html. Edit those files, then
 run this to bring the copies back in sync:
 
-    python build_setup_prompt.py           # rewrite setup_prompt.md
-    python build_setup_prompt.py --check   # exit 1 if setup_prompt.md is out of date
+    python3 build_setup_prompt.py           # rewrite setup_prompt.md
+    python3 build_setup_prompt.py --check   # exit 1 if setup_prompt.md is out of date
 """
 import pathlib
 import re
@@ -43,11 +43,13 @@ def main():
 
     if '--check' in sys.argv[1:]:
         if built != source:
-            sys.exit('setup_prompt.md is out of date. Run: python build_setup_prompt.py')
+            sys.exit('setup_prompt.md is out of date. Run: python3 build_setup_prompt.py')
         print(f'setup_prompt.md is current ({len(names)} appendices).')
         return
 
-    PROMPT.write_text(built, encoding='utf-8')
+    # newline='\n' keeps LF endings on Windows, so the prompt doesn't churn in git.
+    with open(PROMPT, 'w', encoding='utf-8', newline='\n') as f:
+        f.write(built)
     print(f'Rebuilt {len(names)} appendices: {", ".join(names)}')
 
 

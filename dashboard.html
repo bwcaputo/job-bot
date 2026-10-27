@@ -178,8 +178,8 @@
 
   <div id="empty-state" hidden>
     <div class="empty panel">
-      <h2>No runs yet</h2>
-      <p>Your first run fills this in. Runs fire on the schedule you picked while the Claude desktop app is open.</p>
+      <h2 id="empty-title">No runs yet</h2>
+      <p id="empty-text">Your first run fills this in. Runs fire on the schedule you picked while the Claude desktop app is open.</p>
       <div class="rules" id="rules-box"></div>
     </div>
   </div>
@@ -261,6 +261,7 @@
 
 const LOCAL_KEY = 'jobbot_feedback_v2';
 const MARKS = { applied: 'Applied', saved: 'Save', skipped: 'Skip' };
+const SURFACED = ['qualified', 'stepping-stone'];
 const APP_STATUS = {
   submitted:    { label: 'Submitted',    chip: 'chip-navy',   bucket: 'active' },
   acknowledged: { label: 'Acknowledged', chip: 'chip-navy',   bucket: 'active' },
@@ -275,14 +276,19 @@ const APP_STATUS = {
   withdrew:     { label: 'Withdrew',     chip: 'chip-grey',   bucket: 'lost'   },
 };
 const IN_PROGRESS = ['screening', 'assessment', 'interview', 'interviewing', 'phone-screen', 'onsite', 'final-round', 'reference-check'];
+const LOCAL_ONLY = 'Marks save in this browser only. Tell Claude "mark <company> applied" to record one for the next run.';
 
 const state = {
-  jobs: [], applications: [], feedback: {}, floor: 75, star: 85, generatedAt: null,
+  jobs: [], applications: [], feedback: {}, floor: 75, star: 85, lifetime: null, generatedAt: null,
   tab: 'applied', appsFilter: 'active',
 };
-let localMarks = readLocal();   // marks made in this browser, kept as a fallback
-let db = null;                  // the artifact's database, when this view has one
-const writeChains = {};         // one write at a time per job
+const localMarks = readLocal();   // marks made in this browser; uploaded once the database answers
+let db = null;                    // the artifact's database, when this view has one
+let dbState = 'connecting';       // connecting | live | local
+let lastWriteError = null;
+const unsynced = new Set();       // job URLs whose latest mark hasn't reached the database
+const writeChains = {};           // one write at a time per job
+const failedPanels = new Set();
 
 // ---------- helpers ----------
 function esc(s) {
@@ -293,10 +299,12 @@ function safeUrl(u) {
   try { const x = new URL(String(u)); return (x.protocol === 'https:' || x.protocol === 'http:') ? x.href : ''; }
   catch { return ''; }
 }
+function isObj(x) { return x !== null && typeof x === 'object' && !Array.isArray(x); }
+function isSurfaced(j) { return SURFACED.includes(j.outcome); }
 function localDay(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
-function dayOf(s) { return String(s || '').slice(0, 10); }
+function dayOf(s) { return String(s ?? '').slice(0, 10); }
 function parseDay(s) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dayOf(s));
   return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
@@ -307,11 +315,28 @@ function daysAgo(s) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   return Math.round((today - d) / 86400000);
 }
-function lastNDays(n) { return state.jobs.filter(j => daysAgo(j.scored_date) <= n); }
+function lastNDays(n) { return state.jobs.filter(j => daysAgo(j.scored_date) < n); } // n days including today
 function statusOf(url) { return (state.feedback[url] || {}).status || null; }
+function markTime(m) { return Date.parse(m && m.timestamp) || 0; }
 function pct(a, b) { return b ? `${Math.round(100 * a / b)}%` : '—'; }
 function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 function plural(n, word) { return `${n} ${word}${n === 1 ? '' : 's'}`; }
+function byScore(rows) { return rows.slice().sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0)); }
+// One row per posting (the newest), so a role seen on several days counts once.
+function uniqueJobs(rows) {
+  const best = new Map();
+  rows.forEach(j => {
+    if (typeof j.url !== 'string' || !j.url) return;
+    const cur = best.get(j.url);
+    if (!cur || dayOf(j.scored_date) >= dayOf(cur.scored_date)) best.set(j.url, j);
+  });
+  return [...best.values()];
+}
+function skillsOf(j) {
+  const s = j.skills_mentioned;
+  const list = Array.isArray(s) ? s : typeof s === 'string' ? s.split(',') : [];
+  return list.map(x => String(x).trim()).filter(Boolean);
+}
 function table(head, rows) {
   return `<div class="table-scroll"><table><thead><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
 }
@@ -332,56 +357,86 @@ function markId(url) {
 
 // ---------- feedback (Applied / Save / Skip) ----------
 function readLocal() {
-  try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || '{}') || {}; } catch { return {}; }
+  try { const v = JSON.parse(localStorage.getItem(LOCAL_KEY) || '{}'); return isObj(v) ? v : {}; } catch { return {}; }
 }
 function writeLocal() {
   try { localStorage.setItem(LOCAL_KEY, JSON.stringify(localMarks)); } catch { /* storage blocked; marks still live in memory */ }
 }
-// Each source maps job URL -> {status, timestamp}. The newest timestamp wins; status null clears a mark.
+// Each source maps job URL -> {status, timestamp, day}. The newest timestamp wins; status null clears a mark.
 function mergeMarks(source) {
   for (const [url, mark] of Object.entries(source || {})) {
-    if (!mark || typeof mark !== 'object') continue;
+    if (!isObj(mark)) continue;
     const cur = state.feedback[url];
-    if (!cur || (Date.parse(mark.timestamp) || 0) >= (Date.parse(cur.timestamp) || 0)) state.feedback[url] = mark;
+    if (!cur || markTime(mark) >= markTime(cur)) state.feedback[url] = mark;
   }
 }
-function setSyncNote(text) { document.getElementById('sync-note').textContent = text; }
+
+function updateSyncNote() {
+  let text = '';
+  if (dbState === 'local') text = LOCAL_ONLY;
+  else if (dbState === 'live') {
+    if (lastWriteError === 'quota_exceeded') text = 'Dashboard storage is full, so new marks save in this browser only.';
+    else if (lastWriteError && unsynced.size) text = `${plural(unsynced.size, 'mark')} saved in this browser but not synced yet. Open the dashboard here again to sync.`;
+    else text = 'Your marks sync to the next run.';
+  }
+  document.getElementById('sync-note').textContent = text;
+}
+
+// Write one mark as given (never toggles), retrying once when the database is briefly unavailable.
+function pushMark(url, mark) {
+  const ref = db.collection('feedback').doc(markId(url));
+  const body = { url, status: mark.status ?? null, timestamp: mark.timestamp, day: mark.day || null };
+  const write = () => ref.set(body);
+  unsynced.add(url);
+  writeChains[url] = (writeChains[url] || Promise.resolve())
+    .then(write)
+    .catch(e => {
+      if (e && e.code === 'unavailable') return new Promise(r => setTimeout(r, 400 + Math.random() * 1200)).then(write);
+      throw e;
+    })
+    .then(() => { unsynced.delete(url); if (!unsynced.size) lastWriteError = null; updateSyncNote(); },
+          e => { lastWriteError = (e && e.code) || 'unavailable'; updateSyncNote(); });
+}
 
 function setStatus(url, status) {
   const next = statusOf(url) === status ? null : status; // clicking the active mark clears it
-  const mark = { status: next, timestamp: new Date().toISOString() };
+  const mark = { status: next, timestamp: new Date().toISOString(), day: localDay() };
   state.feedback[url] = mark;
   localMarks[url] = mark;
   writeLocal();
   renderAll();
-  if (!db) return;
-  const ref = db.collection('feedback').doc(markId(url));
-  writeChains[url] = (writeChains[url] || Promise.resolve())
-    .then(() => ref.set({ url, status: mark.status, timestamp: mark.timestamp }))
-    .catch(e => {
-      setSyncNote(e && e.code === 'quota_exceeded'
-        ? 'Dashboard storage is full, so new marks save in this browser only.'
-        : 'That mark saved in this browser but did not reach the dashboard database. Click it again to retry.');
-    });
+  if (db) pushMark(url, mark);
 }
 
-const LOCAL_ONLY = 'Marks save in this browser only. Tell Claude "mark <company> applied" to record one for the next run.';
 async function connectDb() {
-  if (!window.claude || typeof window.claude.use !== 'function') { setSyncNote(LOCAL_ONLY); return; }
-  try { db = await window.claude.use('db'); } catch { db = null; }
-  if (!db) { setSyncNote(LOCAL_ONLY); return; }
+  let handle = null;
+  if (window.claude && typeof window.claude.use === 'function') {
+    try { handle = await window.claude.use('db'); } catch { handle = null; }
+  }
+  if (!handle) { dbState = 'local'; updateSyncNote(); return; }
+  db = handle;
+  dbState = 'live';
+  updateSyncNote();
+  let reconciled = false;
   db.collection('feedback').onSnapshot(snap => {
     const remote = {};
     snap.docs.forEach(d => {
       const v = d.data();
-      if (v && typeof v.url === 'string') remote[v.url] = { status: v.status ?? null, timestamp: v.timestamp || null };
+      if (v && typeof v.url === 'string') remote[v.url] = { status: v.status ?? null, timestamp: v.timestamp || null, day: v.day || null };
     });
     mergeMarks(remote);
-    setSyncNote('Your marks sync to the next run.');
+    // Once the database gives a definitive answer, upload marks this browser holds that it hasn't seen.
+    if (!reconciled && !(snap.metadata && snap.metadata.fromCache)) {
+      reconciled = true;
+      for (const [url, mark] of Object.entries(localMarks)) {
+        if (state.feedback[url] === mark && markTime(mark) > markTime(remote[url])) pushMark(url, mark);
+      }
+    }
     renderAll();
   }, () => {
     db = null;
-    setSyncNote(LOCAL_ONLY);
+    dbState = 'local';
+    updateSyncNote();
   });
 }
 
@@ -393,7 +448,7 @@ function markButtons(url) {
   ).join('');
 }
 function scoreChip(j) {
-  return `<span class="chip ${(j.score || 0) >= state.star ? 'chip-green' : 'chip-yellow'}">${esc(j.score ?? '–')}</span>`;
+  return `<span class="chip ${(Number(j.score) || 0) >= state.star ? 'chip-green' : 'chip-yellow'}">${esc(j.score ?? '–')}</span>`;
 }
 function jdLink(j, text) {
   const href = safeUrl(j.url);
@@ -409,51 +464,68 @@ function materials(j) {
 }
 
 // ---------- render ----------
+// A panel that hits malformed data reports itself and leaves the others drawn.
+function safely(name, fn) {
+  try { fn(); }
+  catch (e) {
+    console.error(`Job Bot: ${name} failed`, e);
+    failedPanels.add(name);
+    const err = document.getElementById('err-state');
+    err.hidden = false;
+    err.textContent = `Part of the dashboard didn't load (${[...failedPanels].join(', ')}). Ask Claude to check the Job Bot ledger for a malformed row.`;
+  }
+}
+
 function renderAll() {
   if (!state.jobs.length) {
     document.getElementById('empty-state').hidden = false;
     document.getElementById('data-state').hidden = true;
+    if (state.lifetime && state.lifetime.scanned) {
+      document.getElementById('empty-title').textContent = 'No recent runs';
+      document.getElementById('empty-text').textContent = 'Nothing in the last 31 days. Check Scheduled in the Claude sidebar for missed or paused runs.';
+    }
     document.getElementById('rules-box').innerHTML = `<strong>Search rules in effect</strong><br>
       Source: company career sites only, no job aggregators<br>
       Freshness: posted within 7 days, with a verified date<br>
-      Output: up to 3 matches a day, never padded<br>
-      Match floor: ${esc(state.floor)}, star at ${esc(state.star)}`;
+      Output: up to 3 matches a day plus up to 2 stepping stones, never padded<br>
+      Match floor: ${esc(state.floor)}, strong fit at ${esc(state.star)}`;
     return;
   }
   document.getElementById('empty-state').hidden = true;
   document.getElementById('data-state').hidden = false;
-  renderKpis();
-  renderToday();
-  renderRunHistory();
-  renderCharts();
-  renderApplications();
-  renderPipeline();
-  renderLog();
+  safely('summary numbers', renderKpis);
+  safely("today's brief", renderToday);
+  safely('run history', renderRunHistory);
+  safely('charts', renderCharts);
+  safely('applications', renderApplications);
+  safely('pipeline', renderPipeline);
+  safely('activity log', renderLog);
   markTabs();
 }
 
 function renderKpis() {
   const last30 = lastNDays(30);
-  const q30 = last30.filter(j => j.outcome === 'qualified');
-  const applied = q30.filter(j => statusOf(j.url) === 'applied').length;
-  const skipped = q30.filter(j => statusOf(j.url) === 'skipped').length;
-  const saved = q30.filter(j => statusOf(j.url) === 'saved').length;
+  const q30 = uniqueJobs(last30.filter(j => j.outcome === 'qualified'));
+  const count = s => q30.filter(j => statusOf(j.url) === s).length;
   document.getElementById('kpi-scanned').textContent = last30.length;
   document.getElementById('kpi-scanned-sub').textContent = `${lastNDays(7).length} in the last 7 days`;
   document.getElementById('kpi-qualified-label').textContent = `Qualified ${state.floor}+ (30d)`;
   document.getElementById('kpi-qualified').textContent = q30.length;
   document.getElementById('kpi-qualified-sub').textContent = `${pct(q30.length, last30.length)} pass rate`;
-  document.getElementById('kpi-applied').textContent = applied;
-  document.getElementById('kpi-applied-sub').textContent = `${skipped} skipped · ${saved} saved`;
-  document.getElementById('kpi-rate').textContent = pct(applied, q30.length);
+  document.getElementById('kpi-applied').textContent = count('applied');
+  document.getElementById('kpi-applied-sub').textContent = `${count('skipped')} skipped · ${count('saved')} saved`;
+  document.getElementById('kpi-rate').textContent = pct(count('applied'), q30.length);
 
-  const all = state.jobs;
-  const allQ = all.filter(j => j.outcome === 'qualified');
-  const allApplied = allQ.filter(j => statusOf(j.url) === 'applied').length;
-  const first = all.map(j => dayOf(j.scored_date)).filter(Boolean).sort()[0];
-  const days = first ? Math.max(1, daysAgo(first) + 1) : 1;
+  const lt = state.lifetime || {
+    scanned: state.jobs.length,
+    qualified: uniqueJobs(state.jobs.filter(j => j.outcome === 'qualified')).length,
+    first_date: state.jobs.map(j => dayOf(j.scored_date)).filter(Boolean).sort()[0],
+  };
+  const applied = Object.values(state.feedback).filter(m => isObj(m) && m.status === 'applied').length;
+  const age = daysAgo(lt.first_date);
+  const days = age === Infinity ? 1 : Math.max(1, age + 1);
   document.getElementById('lifetime-line').innerHTML =
-    `Lifetime · <strong>${all.length}</strong> scanned · <strong>${allQ.length}</strong> qualified · <strong>${allApplied}</strong> applied · across ${plural(days, 'day')}`;
+    `Lifetime · <strong>${esc(lt.scanned)}</strong> scanned · <strong>${esc(lt.qualified)}</strong> qualified · <strong>${applied}</strong> applied · across ${plural(days, 'day')}`;
 }
 
 function renderToday() {
@@ -464,10 +536,10 @@ function renderToday() {
   if (latest && latest !== localDay()) dateEl.textContent += ` (last run ${latest})`;
 
   const runJobs = state.jobs.filter(j => dayOf(j.scored_date) === latest);
-  const qualified = runJobs.filter(j => j.outcome === 'qualified').sort((a, b) => (b.score || 0) - (a.score || 0));
-  const stepping = runJobs.filter(j => j.outcome === 'stepping-stone').sort((a, b) => (b.score || 0) - (a.score || 0));
+  const qualified = byScore(runJobs.filter(j => j.outcome === 'qualified'));
+  const stepping = byScore(runJobs.filter(j => j.outcome === 'stepping-stone'));
   const shown = [...qualified.slice(0, 3), ...stepping.slice(0, 2)];
-  const applied = runJobs.filter(j => statusOf(j.url) === 'applied').length;
+  const applied = [...qualified, ...stepping].filter(j => statusOf(j.url) === 'applied').length;
 
   document.getElementById('today-counts').innerHTML = `
     <div class="tc"><span class="n">${runJobs.length}</span><span class="lbl">Scanned</span></div>
@@ -486,7 +558,7 @@ function renderToday() {
     const isStep = j.outcome === 'stepping-stone';
     const href = safeUrl(j.url);
     return `<article class="today-card${i === 0 && !isStep ? ' top' : ''}">
-      <div class="today-score ${(j.score || 0) >= state.star ? 'green' : 'yellow'}">${esc(j.score ?? '–')}</div>
+      <div class="today-score ${(Number(j.score) || 0) >= state.star ? 'green' : 'yellow'}">${esc(j.score ?? '–')}</div>
       <div style="min-width:0">
         <div><strong>${esc(j.company)}</strong> · ${esc(j.title || '')}
           ${isStep ? '<span class="chip chip-yellow">Stepping stone</span>' : ''}
@@ -504,20 +576,22 @@ function renderToday() {
 }
 
 function renderRunHistory() {
+  const wrap = document.getElementById('run-history');
+  const open = new Set([...wrap.querySelectorAll('details[open]')].map(d => d.dataset.date)); // keep expanded days open
   const byDate = {};
   state.jobs.forEach(j => { const d = dayOf(j.scored_date); if (d) (byDate[d] = byDate[d] || []).push(j); });
   const dates = Object.keys(byDate).sort().reverse().slice(0, 30);
-  document.getElementById('run-history').innerHTML = dates.map(d => {
+  wrap.innerHTML = dates.map(d => {
     const jobs = byDate[d];
-    const qualified = jobs.filter(j => j.outcome === 'qualified').sort((a, b) => (b.score || 0) - (a.score || 0));
-    const stepping = jobs.filter(j => j.outcome === 'stepping-stone').sort((a, b) => (b.score || 0) - (a.score || 0));
+    const qualified = byScore(jobs.filter(j => j.outcome === 'qualified'));
+    const stepping = byScore(jobs.filter(j => j.outcome === 'stepping-stone'));
     const surfaced = [...qualified, ...stepping];
-    const applied = jobs.filter(j => statusOf(j.url) === 'applied').length;
+    const applied = surfaced.filter(j => statusOf(j.url) === 'applied').length;
     const top = qualified[0] || stepping[0];
     const date = parseDay(d);
-    const stale = jobs.filter(j => j.outcome === 'stale').length;
-    const offFit = jobs.filter(j => ['off-fit', 'dealbreaker'].includes(j.outcome)).length;
-    const other = jobs.length - surfaced.length - stale - offFit;
+    const count = o => jobs.filter(j => j.outcome === o).length;
+    const stale = count('stale'), offFit = count('off-fit') + count('dealbreaker'), below = count('below-floor'), repeats = count('dedup');
+    const other = jobs.length - surfaced.length - stale - offFit - below - repeats;
     const rows = surfaced.map(j => {
       const s = statusOf(j.url);
       const statusChip = s ? `<span class="chip ${s === 'applied' ? 'chip-green' : s === 'saved' ? 'chip-yellow' : 'chip-grey'}">${esc(s)}</span>`
@@ -530,7 +604,7 @@ function renderRunHistory() {
         <td style="min-width:220px">${esc(j.why_fits || '')}</td>
         <td>${statusChip}</td></tr>`;
     }).join('');
-    return `<details class="run-row">
+    return `<details class="run-row" data-date="${esc(d)}"${open.has(d) ? ' open' : ''}>
       <summary class="run-summary">
         <div class="run-date">${date ? date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : esc(d)}<span class="weekday">${date ? date.toLocaleDateString(undefined, { weekday: 'short' }) : ''}</span></div>
         <div class="run-stat scanned"><strong>${jobs.length}</strong><span class="lbl">Scanned</span></div>
@@ -541,7 +615,7 @@ function renderRunHistory() {
       </summary>
       <div class="run-detail">
         ${surfaced.length ? table(['Score', 'Company / role', 'Location', 'Posted', 'Why it fits', 'Status'], rows) : ''}
-        <div class="drops">Dropped: ${stale} stale · ${offFit} off-fit or dealbreaker · ${other} repeat or under the floor</div>
+        <div class="drops">Dropped: ${stale} stale · ${offFit} off-fit or dealbreaker · ${below} under the floor · ${repeats} repeats${other > 0 ? ` · ${other} other` : ''}</div>
       </div>
     </details>`;
   }).join('');
@@ -557,7 +631,7 @@ function renderCharts() {
     });
     return;
   }
-  const c = { ink: cssVar('--ink'), muted: cssVar('--muted'), line: cssVar('--line'), navy: cssVar('--navy'), yellow: cssVar('--yellow'), green: cssVar('--green') };
+  const c = { muted: cssVar('--muted'), line: cssVar('--line'), navy: cssVar('--navy'), yellow: cssVar('--yellow'), green: cssVar('--green') };
   Chart.defaults.color = c.muted;
   Chart.defaults.borderColor = c.line;
   Chart.defaults.font.family = cssVar('--font');
@@ -566,7 +640,7 @@ function renderCharts() {
   for (let i = 29; i >= 0; i--) { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - i); days.push(localDay(d)); }
   const perDay = days.map(day => {
     const js = state.jobs.filter(j => dayOf(j.scored_date) === day);
-    return [js.length, js.filter(j => j.outcome === 'qualified').length, js.filter(j => statusOf(j.url) === 'applied').length];
+    return [js.length, js.filter(j => j.outcome === 'qualified').length, js.filter(j => isSurfaced(j) && statusOf(j.url) === 'applied').length];
   });
   const line = (label, i, color) => ({ label, data: perDay.map(p => p[i]), borderColor: color, backgroundColor: color, borderWidth: 2, tension: 0.3, pointRadius: 0 });
   draw('chart-volume', {
@@ -576,8 +650,8 @@ function renderCharts() {
       scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { ticks: { maxRotation: 0, autoSkip: true } } } },
   });
 
-  const recentQ = lastNDays(30).filter(j => j.outcome === 'qualified');
-  const tally = (pairs) => Object.entries(pairs.reduce((acc, k) => (acc[k] = (acc[k] || 0) + 1, acc), {})).sort((a, b) => b[1] - a[1]);
+  const recentQ = uniqueJobs(lastNDays(30).filter(j => j.outcome === 'qualified'));
+  const tally = keys => Object.entries(keys.reduce((acc, k) => (acc[k] = (acc[k] || 0) + 1, acc), {})).sort((a, b) => b[1] - a[1]);
   const bars = (entries, color) => ({
     type: 'bar',
     data: { labels: entries.map(e => e[0]), datasets: [{ data: entries.map(e => e[1]), backgroundColor: color }] },
@@ -585,7 +659,7 @@ function renderCharts() {
       scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } },
   });
   draw('chart-geo', bars(tally(recentQ.map(j => String(j.location_type || j.location || 'Unknown'))).slice(0, 8), c.navy));
-  draw('chart-skills', bars(tally(recentQ.flatMap(j => (j.skills_mentioned || []).map(s => String(s).trim()).filter(Boolean))).slice(0, 10), c.yellow));
+  draw('chart-skills', bars(tally(recentQ.flatMap(skillsOf)).slice(0, 10), c.yellow));
 }
 function draw(id, config) {
   if (charts[id]) charts[id].destroy();
@@ -621,10 +695,11 @@ function renderApplications() {
   wrap.innerHTML = table(['Company / role', 'Applied', 'Status', 'Last email', 'Score', 'Links'], shown.map(a => {
     const meta = APP_STATUS[a.application_status] || { label: a.application_status || 'unknown', chip: 'chip-grey' };
     const age = daysAgo(a.applied_at);
+    const ageText = age === Infinity ? '' : age <= 0 ? 'today' : `${plural(age, 'day')} ago`;
     const thread = a.last_email_thread_id ? ` · <a href="https://mail.google.com/mail/u/0/#all/${encodeURIComponent(a.last_email_thread_id)}" target="_blank" rel="noopener noreferrer">open thread</a>` : '';
     return `<tr>
       <td><strong>${esc(a.company)}</strong><div class="sub">${esc(a.title || '')}</div></td>
-      <td>${esc(dayOf(a.applied_at) || '—')}<div class="sub">${age === Infinity ? '' : age === 0 ? 'today' : plural(age, 'day') + ' ago'}</div></td>
+      <td>${esc(dayOf(a.applied_at) || '—')}<div class="sub">${ageText}</div></td>
       <td><span class="chip ${meta.chip}">${esc(meta.label)}</span></td>
       <td>${a.last_email_subject ? `<div class="truncate" title="${esc(a.last_email_subject)}">${esc(a.last_email_subject)}</div><div class="sub">${esc(a.last_email_at || '')}</div>` : '<span class="sub">—</span>'}${thread}</td>
       <td class="score">${esc(a.score_at_apply ?? '—')}</td>
@@ -634,9 +709,8 @@ function renderApplications() {
 }
 
 function renderPipeline() {
-  const pipeline = state.jobs
-    .filter(j => j.outcome === 'qualified' && !['applied', 'skipped'].includes(statusOf(j.url)))
-    .sort((a, b) => (b.score || 0) - (a.score || 0));
+  const pipeline = byScore(uniqueJobs(state.jobs.filter(j => j.outcome === 'qualified'))
+    .filter(j => !['applied', 'skipped'].includes(statusOf(j.url))));
   const wrap = document.getElementById('pipeline-table-wrap');
   if (!pipeline.length) { wrap.innerHTML = '<p class="sub" style="padding:10px">No undecided jobs.</p>'; return; }
   wrap.innerHTML = table(['Score', 'Company / role', 'Location', 'Posted', 'Materials', 'Decision'], pipeline.map(j => `<tr>
@@ -650,15 +724,16 @@ function renderPipeline() {
 }
 
 function renderLog() {
-  const items = state.jobs
+  const items = uniqueJobs(state.jobs.filter(isSurfaced))
     .filter(j => statusOf(j.url) === state.tab)
-    .sort((a, b) => (Date.parse(state.feedback[b.url].timestamp) || 0) - (Date.parse(state.feedback[a.url].timestamp) || 0));
+    .sort((a, b) => markTime(state.feedback[b.url]) - markTime(state.feedback[a.url]));
   const wrap = document.getElementById('log-table-wrap');
   if (!items.length) { wrap.innerHTML = `<p class="sub" style="padding:10px">Nothing marked ${esc(MARKS[state.tab] || state.tab)} yet.</p>`; return; }
   wrap.innerHTML = table(['When', 'Company / role', 'Location', 'Score', 'Posting', ''], items.map(j => {
-    const ts = Date.parse(state.feedback[j.url].timestamp);
+    const mark = state.feedback[j.url];
+    const when = mark.day || (markTime(mark) ? localDay(new Date(markTime(mark))) : '—');
     return `<tr>
-      <td>${ts ? new Date(ts).toLocaleDateString() : '—'}</td>
+      <td>${esc(when)}</td>
       <td><strong>${esc(j.company)}</strong><div class="truncate">${esc(j.title || '')}</div></td>
       <td>${esc(j.location || '—')}</td>
       <td class="score">${esc(j.score ?? '—')}</td>
@@ -691,14 +766,14 @@ document.addEventListener('click', e => {
   const mark = e.target.closest('[data-mark]');
   if (mark) { setStatus(mark.dataset.url, mark.dataset.mark); return; }
   const tab = e.target.closest('[data-tab]');
-  if (tab) { state.tab = tab.dataset.tab; renderLog(); markTabs(); return; }
+  if (tab) { state.tab = tab.dataset.tab; safely('activity log', renderLog); markTabs(); return; }
   const filter = e.target.closest('[data-apps-filter]');
-  if (filter) { state.appsFilter = filter.dataset.appsFilter; renderApplications(); markTabs(); return; }
+  if (filter) { state.appsFilter = filter.dataset.appsFilter; safely('applications', renderApplications); markTabs(); return; }
   const copy = e.target.closest('[data-copy]');
   if (copy) copyText(copy.dataset.copy, copy);
 });
 // Redraw charts when the viewer's theme changes, so axis and bar colors follow it.
-const redrawCharts = () => { if (state.jobs.length) renderCharts(); };
+const redrawCharts = () => { if (state.jobs.length) safely('charts', renderCharts); };
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', redrawCharts);
 new MutationObserver(redrawCharts).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
@@ -706,21 +781,24 @@ new MutationObserver(redrawCharts).observe(document.documentElement, { attribute
 (function boot() {
   try {
     const baked = JSON.parse(document.getElementById('baked-data').textContent || '{}');
-    state.jobs = Array.isArray(baked.jobs) ? baked.jobs : [];
-    state.applications = Array.isArray(baked.applications) ? baked.applications : [];
+    state.jobs = (Array.isArray(baked.jobs) ? baked.jobs : []).filter(isObj);
+    state.applications = (Array.isArray(baked.applications) ? baked.applications : []).filter(isObj);
     state.floor = Number(baked.floor) || 75;
     state.star = Number(baked.star) || 85;
+    state.lifetime = isObj(baked.lifetime) ? baked.lifetime : null;
     state.generatedAt = baked.generated_at || null;
-    mergeMarks(baked.feedback);
+    if (isObj(baked.feedback)) mergeMarks(baked.feedback);
   } catch (e) {
     const err = document.getElementById('err-state');
     err.hidden = false;
     err.textContent = 'The dashboard data block is unreadable. Ask Claude to re-run bake.py and republish the dashboard.';
   }
   mergeMarks(localMarks);
+  const total = state.lifetime ? Number(state.lifetime.scanned) || 0 : state.jobs.length;
   const stamp = state.generatedAt ? new Date(state.generatedAt).toLocaleString() : 'not yet';
-  document.getElementById('status-text').textContent = `${plural(state.jobs.length, 'job')} in the ledger · updated ${stamp}`;
+  document.getElementById('status-text').textContent = `${plural(total, 'job')} in the ledger · updated ${stamp}`;
+  connectDb();   // start before drawing, so a drawing error can't keep marks from syncing
   renderAll();
-  connectDb();
 })();
 </script>
+<!-- job-bot:end -->

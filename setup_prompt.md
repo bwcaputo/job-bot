@@ -21,9 +21,9 @@ Ask these four. Use a multiple-choice question tool if you have one (it fits up 
 
 Then, in chat:
 
-- Their home city, unless they chose remote only.
+- Their home city, unless they chose remote only, and their time zone if the city doesn't settle it.
 - Their master resume as a .docx or .pdf. A rough one works.
-- 20–60 target companies, one per line. Plain names are fine. Runs rotate through long lists, since one day's search budget covers about 30 companies.
+- 20–60 target companies, one per line. Plain names are fine. Runs rotate through long lists, so every company gets checked every few days.
 
 Take their name, email, phone, and LinkedIn URL from the resume, and ask only for what's missing.
 
@@ -31,7 +31,7 @@ Take their name, email, phone, and LinkedIn URL from the resume, and ask only fo
 
 Ask them to connect the folder where Job Bot will live; Documents/Claude works well. In the Claude desktop app, that's the + menu beside the message box, then Add folder. Everything goes in a `Job Bot` folder inside it.
 
-If a `Job Bot` folder from an earlier version is already there, keep its data: `briefs/`, `applications/`, `master/`, and `config/preferences.md`. Replace everything else with this version's files, add any preferences sections the new template has that theirs lacks, move old dated folders into `daily/` if they want, and tell them what you kept.
+If a `Job Bot` folder from an earlier version is already there, keep its data: `briefs/`, `applications/`, `master/resume_master.md`, `master/projects.md`, and `config/preferences.md`. Replace everything else with this version's files. Bring their preferences up to the new template: add the sections theirs lacks, move named people from "Network signals" into "Network contacts", and copy the contact line from their old cover letter template into the Candidate snapshot. Move old dated folders into `daily/` if they want, and tell them what you kept.
 
 ## 3. Build the files
 
@@ -52,9 +52,9 @@ daily/         one dated folder per run, created by the runs
 - `master/cover_letter_template.md`: Appendix C.
 - `config/daily_brief_prompt.md`: Appendix D.
 - `dashboard/bake.py`: Appendix F.
-- `dashboard/dashboard.html`: Appendix G, with `{FIRST_NAME}` and `{SEARCH_TAGLINE}` filled in. The tagline is their function, roles, and geography in under 50 characters, such as "Finance · FP&A · Denver + remote".
+- `dashboard/dashboard.html`: Appendix G, with `{FIRST_NAME}` and `{SEARCH_TAGLINE}` filled in. The tagline is their function, roles, and geography in under 50 characters, such as "Finance · FP&A · Denver + remote". The file is long; confirm its last line is `<!-- job-bot:end -->`, and if it isn't, the copy was cut off, so write it again.
 
-Run `python3 dashboard/bake.py` once. It should report 0 jobs baked.
+Run `python3 dashboard/bake.py` once. It should finish without an error; a new setup bakes 0 rows.
 
 ## 4. Publish the dashboard
 
@@ -65,10 +65,12 @@ Publish `dashboard/dashboard.html` as an artifact. If artifact capabilities are 
 Fill Appendix E with their first name and the dashboard URL, and save it as `config/scheduled_task_prompt.md`. Then create a scheduled task:
 
 - **Name:** `<first name>-job-bot`, lowercase.
-- **When:** their answer to question 3.
+- **When:** their answer to question 3, in their time zone.
 - **Prompt:** the filled Appendix E.
 - **Folder:** the `Job Bot` folder. Runs need their computer.
 - **Model:** Claude Opus 5.5. If you can't set the model yourself, tell them to choose it in the task's settings under Scheduled in the sidebar.
+
+If this session can't create scheduled tasks, walk them through it: Scheduled in the sidebar, then + New task; paste the filled Appendix E as the prompt; choose the frequency, Claude Opus 5.5, and the `Job Bot` folder; then Save.
 
 If they already have a Job Bot scheduled task from an earlier version, tell them to delete it under Scheduled so two runs don't fire each morning.
 
@@ -78,9 +80,11 @@ Tell them in a line or two that runs happen while the computer is awake and the 
 
 Unless they'd rather wait for the morning, follow `config/daily_brief_prompt.md` once now so the dashboard opens with data.
 
-## 7. Offer the workbook
+## 7. Offer Gmail and the workbook
 
-Offer the 30-minute deep-tailor workbook: anti-keywords, compensation floor, network contacts, cover-letter voice, scoring weights, excluded industries, stepping-stone companies, and the project ledger. If they want it, save Appendix H as `Job Bot/workshop/deep_tailor.md`.
+If Gmail isn't connected, offer to connect it. With it, each run updates the applications tracker from recruiter replies; it only reads mail.
+
+Then offer the 30-minute deep-tailor workbook: anti-keywords, compensation floor, network contacts, cover-letter voice, scoring weights, excluded industries, stepping-stone companies, and the project ledger. If they want it, save Appendix H as `Job Bot/workshop/deep_tailor.md`.
 
 ## 8. Wrap up
 
@@ -104,6 +108,7 @@ Every run reads this file. Edit it anytime, or tell Claude what to change.
 ## Candidate snapshot
 - {One line, e.g. "Full-time MBA, Class of 2027, five years in supply chain operations"}
 - Home base: {City, State}
+- Time zone: {e.g. America/Denver}
 - Contact line for cover letters: {email} | {phone} | {LinkedIn URL}
 
 ## Dashboard
@@ -288,7 +293,7 @@ Sincerely,
 
 You're running the daily job search for the person described in `config/preferences.md`. The goal is a short list they'll act on: up to 3 roles posted in the last 7 days on the employer's own site, each scored against their resume and paired with a tailored one-page resume and a cover letter. A thin day produces a short list; never fill it with weaker roles.
 
-Everything lives in the `Job Bot` folder attached to this task, and paths below are relative to it. If the folder is on the user's computer, build and check documents wherever you have python-docx and LibreOffice, then save the results back into the folder. The run is unattended: make reasonable calls, note them in the summary, and finish.
+Everything lives in the `Job Bot` folder attached to this task. Work from that folder; paths below are relative to it. If the folder is on the user's computer, build and check documents wherever you have python-docx and LibreOffice, then save the results back into the folder. The run is unattended: make reasonable calls, note them in the summary, and finish.
 
 ## 1. Load context
 
@@ -298,21 +303,37 @@ Read these files:
 - `master/resume_master.md`: the only source of facts for tailored materials.
 - `master/projects.md`: projects to draw on, picked by their `fits:` tags.
 - `master/cover_letter_template.md`: cover letter structure and style rules.
-- `briefs/all_jobs.jsonl`: every posting examined before.
 - `briefs/feedback.json` and `applications/applications.jsonl`.
 
 If the master resume is missing, stop and say so in the summary.
 
+The ledger, `briefs/all_jobs.jsonl`, grows every run, so don't read it whole. Print the last 14 days of it for repeat checks:
+
+```bash
+python3 - <<'PY'
+import datetime, json
+cutoff = (datetime.date.today() - datetime.timedelta(days=14)).isoformat()
+with open('briefs/all_jobs.jsonl', encoding='utf-8-sig') as f:
+    for line in f:
+        try:
+            row = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(row, dict) and str(row.get('scored_date') or '')[:10] >= cutoff:
+            print(str(row.get('scored_date'))[:10], row.get('outcome'), row.get('url'))
+PY
+```
+
 ## 2. Sync the dashboard marks
 
-The dashboard stores the user's Applied, Save, and Skip clicks in its own database: a `feedback` collection with one document per job (`url`, `status`, `timestamp`). Read that collection from the dashboard artifact and merge it into `briefs/feedback.json`, keyed by URL, keeping whichever mark has the newer timestamp. A `status` of `null` means the user cleared the mark. If the dashboard's data isn't reachable, continue with feedback.json as it is.
+The dashboard stores the user's Applied, Save, and Skip clicks in its own database: a `feedback` collection with one document per job (`url`, `status`, `timestamp`, `day`). Read that collection from the dashboard artifact and merge it into `briefs/feedback.json`, keyed by URL, keeping whichever mark has the newer timestamp. A `status` of `null` means the user cleared the mark. If the dashboard's data isn't reachable, continue with feedback.json as it is.
 
-Then add an application row (schema in §7) for every job marked `applied` that isn't in `applications/applications.jsonl` yet, using the mark's date as `applied_at`.
+Then add an application row (schema in §7) for every job marked `applied` that isn't in `applications/applications.jsonl` yet. Use the mark's `day` as `applied_at`; it's the user's local date. For a mark without one, convert its `timestamp` to the user's time zone.
 
 ## 3. What qualifies
 
 - **Employer source.** The apply link is the company's own careers page or its hosted applicant tracking system: Workday (`*.myworkdayjobs.com`, `*.myworkdaysite.com`), Greenhouse, Lever, Ashby, iCIMS, BambooHR, Workable, or SmartRecruiters. Job boards, aggregators, and staffing firms (LinkedIn, Indeed, Glassdoor, ZipRecruiter, Built In) can point you to a posting; resolve it to the employer's URL or drop it.
-- **Posted within 7 calendar days.** Find the date in this order: JSON-LD `datePosted` in the page source, visible "Posted X days ago" text, an `og:updated_time`-style meta tag, or the company's job index listing the role as new. For the index case, record `posted_date` as `"active YYYY-MM-DD"` and `date_source` as `"index"`. A posting with no verifiable date doesn't qualify.
+- **Posted within 7 calendar days.** Find the date in this order: the posting's date in its applicant tracking system's job feed (§4), JSON-LD `datePosted` in the page source, visible "Posted X days ago" text, an `og:updated_time`-style meta tag, or the company's job index listing the role as new. For the index case, record `posted_date` as `"active YYYY-MM-DD"` and `date_source` as `"index"`. A posting with no verifiable date doesn't qualify.
 - **Still open.** Drop pages that say the job was removed, expired, or closed, or is no longer accepting applications. Quote the page's wording in `drop_reason`.
 - **Within the user's rules.** Geography, anti-keywords, dealbreakers, excluded industries, and the compensation floor from preferences.md. Apply the compensation floor only when the posting publishes a range.
 
@@ -322,9 +343,14 @@ Budget: about 30 searches, 25 page fetches, and 12 minutes per run.
 
 **Named targets first.** For each company in preferences.md:
 
-1. Use its `verified:` careers URL if one is recorded. Otherwise find the careers site, trying `careers.<brand>.com`, `<brand>.com/careers`, `boards.greenhouse.io/<brand>`, `job-boards.greenhouse.io/<brand>`, `jobs.lever.co/<brand>`, `<brand>.ashbyhq.com`, `<brand>.wd1.myworkdayjobs.com`, `careers-<brand>.icims.com`, `<brand>.bamboohr.com/careers`, and `apply.workable.com/<brand>`. Record the hit in preferences.md as `verified: <url>` so later runs skip the lookup.
-2. Search that site for the role keywords plus the user's location or "remote". Run the same search for any `also_search_as:` names.
-3. Fetch each candidate posting for title, location, date, and the full description, then apply §3.
+1. Use its `verified:` careers URL if one is recorded. Otherwise find the careers site, trying `careers.<brand>.com`, `<brand>.com/careers`, `boards.greenhouse.io/<brand>`, `job-boards.greenhouse.io/<brand>`, `jobs.lever.co/<brand>`, `jobs.ashbyhq.com/<brand>`, `<brand>.wd1.myworkdayjobs.com`, `careers-<brand>.icims.com`, `<brand>.bamboohr.com/careers`, and `apply.workable.com/<brand>`. Record the hit in preferences.md as `verified: <url>` so later runs skip the lookup.
+2. If the company hires through Greenhouse, Lever, or Ashby, fetch its public job feed instead of searching. One fetch lists every open role with a date:
+   - Greenhouse: `https://boards-api.greenhouse.io/v1/boards/<board>/jobs`, dated by `first_published` when the feed has it, otherwise `updated_at`.
+   - Lever: `https://api.lever.co/v0/postings/<company>?mode=json`, dated by `createdAt` (milliseconds since 1970).
+   - Ashby: `https://api.ashbyhq.com/posting-api/job-board/<board>`, dated by `publishedAt`.
+   
+   Record `date_source` as `"feed"`. For other sites, search the careers site for the role keywords plus the user's location or "remote", and run the same search for any `also_search_as:` names.
+3. Fetch each candidate posting for its title, location, and full description, confirm the date, then apply §3.
 
 When the list is longer than one run's budget, start with stepping-stone and network companies, then rotate through the rest so every company gets checked every few days. Record the companies you searched in today's `seen_jobs.json`, and use the last few days of those files to pick up where the rotation left off.
 
@@ -334,10 +360,15 @@ When the list is longer than one run's budget, start with stepping-stone and net
 
 Score each surviving posting from 0 to 100 using the rubric and thresholds in preferences.md. The defaults: role keyword overlap 35 (title synonyms count), experience fit 20, location fit 15, domain fit 10, skill overlap 10, network 10.
 
-- At or above the surface threshold: `qualified`.
-- A stepping-stone company scoring 65 or more but under the threshold: `stepping-stone`.
-- A named network contact at the company (full network points) and a score of 65 or more but under the threshold: `qualified` with `network_override: true`.
-- Already in the ledger within the last 14 days, or marked `skipped` or `applied` in feedback: `dedup`.
+Give every posting you examine one outcome:
+
+- `qualified`: at or above the surface threshold. A posting at a company where the user has a named network contact (full network points) also qualifies from 65 up, with `network_override: true`.
+- `stepping-stone`: at a stepping-stone company, 65 or more but under the threshold.
+- `below-floor`: scored, but under the threshold.
+- `off-fit`: not one of the target roles, outside the user's geography, or caught by an anti-keyword or an excluded industry.
+- `dealbreaker`: hits a dealbreaker or the compensation floor.
+- `stale`: older than 7 days, undated, or closed.
+- `dedup`: already in the ledger within the last 14 days, or already marked `skipped` or `applied`. When the user asks for a re-run after changing their preferences, re-score postings from the last 7 days that are still open instead of marking them `dedup`.
 
 Surface the top 3 qualified roles plus up to 2 stepping stones. When feedback shows 3 or more skips that share a title pattern or company, point it out in the summary and suggest an anti-keyword.
 
@@ -350,7 +381,7 @@ For each surfaced role, write these files into `daily/YYYY-MM-DD/` (today's date
 - `<slug>_cover_letter.docx`: 250 words or fewer, following `master/cover_letter_template.md`, signed with the user's name and the contact line from preferences.md.
 - `<slug>_resume.docx`: the tailored resume.
 
-**Tailoring.** Start from `master/resume_master.md`. Reorder and rephrase to match the posting's priorities, use its keywords where the resume supports them, and pick 1–3 projects from `projects.md` by their `fits:` tags. Skip projects tagged `exclude_from_outputs: true` or with TBD details. Every fact, number, title, and credential comes from the master resume or the project ledger, because the resume goes out under the user's name.
+**Tailoring.** Start from `master/resume_master.md`. Reorder and rephrase to match the posting's priorities, use its keywords where the resume supports them, and pick 1–3 projects from `projects.md` by their `fits:` tags. Skip projects tagged `exclude_from_outputs: true` or with TBD details. Every fact, number, title, and credential comes from the master resume or the project ledger, because the resume goes out under the user's name. When you use a claim a project lists under "Verify before use", name it in the summary so the user confirms it before sending.
 
 **One full page.** The resume must be exactly one US Letter page and fill at least 93% of it. Convert it to PDF and measure:
 
@@ -371,23 +402,16 @@ PY
 
 ## 7. Records
 
-**Ledger.** Append one JSON line per posting examined today, surfaced or dropped, to `briefs/all_jobs.jsonl`. Add lines; never rewrite earlier ones.
+**Ledger.** Append one row per posting examined today, surfaced or dropped, to `briefs/all_jobs.jsonl`. Each row is a single line of JSON (Python's `json.dumps(row)` writes one); add lines and never rewrite earlier ones.
 
 ```json
-{"url": "https://careers.example.com/jobs/123", "company": "Example Co", "title": "Senior Consultant",
- "location": "Denver, CO", "location_type": "Hybrid Denver", "posted_date": "2026-10-26",
- "date_source": "json-ld", "scored_date": "2026-10-27", "score": 87,
- "score_breakdown": {"role": 33, "experience": 17, "location": 15, "domain": 10, "skill": 7, "network": 5},
- "outcome": "qualified", "drop_reason": null, "stepping_stone": false, "network_override": false,
- "why_fits": "Two sentences on the fit.", "skills_mentioned": ["SQL", "FP&A"],
- "comp_low": 130000, "comp_high": 165000, "tailored_files": "daily/2026-10-27/",
- "resume_file": "example-co_senior-consultant_resume.docx",
- "cover_letter_file": "example-co_senior-consultant_cover_letter.docx"}
+{"url": "https://careers.example.com/jobs/123", "company": "Example Co", "title": "Senior Consultant", "location": "Denver, CO", "location_type": "Hybrid Denver", "posted_date": "2026-10-26", "date_source": "json-ld", "scored_date": "2026-10-27", "score": 87, "score_breakdown": {"role": 33, "experience": 17, "location": 15, "domain": 10, "skill": 7, "network": 5}, "outcome": "qualified", "drop_reason": null, "stepping_stone": false, "network_override": false, "why_fits": "Two sentences on the fit.", "skills_mentioned": ["SQL", "FP&A"], "comp_low": 130000, "comp_high": 165000, "tailored_files": "daily/2026-10-27/", "resume_file": "example-co_senior-consultant_resume.docx", "cover_letter_file": "example-co_senior-consultant_cover_letter.docx"}
 ```
 
-- `outcome`: `qualified`, `stepping-stone`, `stale`, `off-fit`, `dealbreaker`, or `dedup`.
-- `date_source`: `json-ld`, `text`, `og`, `index`, or `null`.
+- `outcome`: `qualified`, `stepping-stone`, `below-floor`, `off-fit`, `dealbreaker`, `stale`, or `dedup` (defined in §5).
+- `date_source`: `feed`, `json-ld`, `text`, `og`, `index`, or `null`.
 - `location_type`: `<City>`, `Remote-US`, `Hybrid <City>`, `Relocation: <City>`, or `Unknown`.
+- `skills_mentioned` is a list of strings.
 - The materials fields (`tailored_files`, `resume_file`, `cover_letter_file`) apply to surfaced roles only.
 
 **Seen list.** Write `daily/YYYY-MM-DD/seen_jobs.json` with every URL examined and the companies searched today.
@@ -395,18 +419,14 @@ PY
 **Applications.** `applications/applications.jsonl` holds one JSON line per application:
 
 ```json
-{"company": "Example Co", "title": "Senior Consultant", "url": "https://careers.example.com/jobs/123",
- "applied_at": "2026-10-28", "application_status": "submitted",
- "status_history": [{"status": "submitted", "at": "2026-10-28"}], "score_at_apply": 87,
- "tailored_files": "daily/2026-10-27/", "last_email_at": null, "last_email_subject": null,
- "last_email_thread_id": null}
+{"company": "Example Co", "title": "Senior Consultant", "url": "https://careers.example.com/jobs/123", "applied_at": "2026-10-28", "application_status": "submitted", "status_history": [{"status": "submitted", "at": "2026-10-28"}], "score_at_apply": 87, "tailored_files": "daily/2026-10-27/", "last_email_at": null, "last_email_subject": null, "last_email_thread_id": null}
 ```
 
 Statuses: `submitted`, `acknowledged`, `screening`, `assessment`, `interview`, `offer`, `accepted`, `declined`, `rejected`, `ghosted`, `withdrew`. To change a row, rewrite the file with that row updated.
 
 ## 8. Email check (when Gmail is connected)
 
-For each application that is submitted, acknowledged, screening, assessment, or interview, search the last 90 days of Gmail for mail from the company's domain or an applicant-tracking sender (myworkday.com, greenhouse.io, lever.co, icims.com, ashbyhq.com), or with the company or role in the subject. Read the newest message in each thread and set the status:
+For each application that is submitted, acknowledged, screening, assessment, interview, or ghosted, search the last 90 days of Gmail for mail from the company's domain or an applicant-tracking sender (myworkday.com, greenhouse.io, lever.co, icims.com, ashbyhq.com), or with the company or role in the subject. Applicant-tracking senders mail for many employers, so count a message only when its sender domain, subject, or body names this company or this role. Read the newest message that does and set the status:
 
 - `rejected`: "not moving forward", "other candidates", "decided not to proceed", "position has been filled".
 - `acknowledged`: "received your application", "thank you for applying".
@@ -414,22 +434,22 @@ For each application that is submitted, acknowledged, screening, assessment, or 
 - `assessment`: a test, case, or take-home assignment.
 - `offer`: an offer or offer letter.
 
-Append each change to `status_history` and update the `last_email_*` fields. Mark an application `ghosted` after 30 days with no reply since `applied_at`; a later email moves it back. This step only reads mail. It never sends, labels, archives, or deletes anything.
+Append each change to `status_history` and update the `last_email_*` fields. Mark an application `ghosted` after 30 days with no reply since `applied_at`; a later matching email moves it to that email's status. This step only reads mail. It never sends, labels, archives, or deletes anything.
 
 ## 9. Refresh the dashboard
 
-1. Run `python3 dashboard/bake.py`. It rebuilds `dashboard/dashboard.html` from the files above and exits with an error if the page's data block is missing.
+1. Run `python3 dashboard/bake.py`. It rebuilds `dashboard/dashboard.html` from the files above and exits with an error if the page is incomplete or missing its data block.
 2. Confirm the page's data block now includes today's `scored_date`.
 3. Update the dashboard artifact at the URL in preferences.md: read it, then publish `dashboard/dashboard.html` to that same URL and leave its capabilities as they are. If the update fails, report it in the summary instead of publishing a new dashboard.
 4. Save a copy of the baked page as `daily/YYYY-MM-DD/brief.html`, the day's permanent record.
 
 ## 10. Summary
 
-End with one short paragraph: roles surfaced (top company and score), postings examined, how many dropped for freshness versus fit, and anything that needs the user, such as a blocked careers site, a skip pattern, or a missing resume. Close with "Materials: `Job Bot/daily/YYYY-MM-DD/`" and the dashboard link.
+End with one short paragraph: roles surfaced (top company and score), postings examined, how many dropped for freshness versus fit, and anything that needs the user, such as a blocked careers site, a skip pattern, a claim to verify, or a missing resume. Close with "Materials: `Job Bot/daily/YYYY-MM-DD/`" and the dashboard link.
 
 ## When things go wrong
 
-- A careers site blocks fetching: try its job index. If that fails too, skip the company today and list it in the summary.
+- A careers site blocks fetching: try its job feed or job index. If those fail too, skip the company today and list it in the summary.
 - Searches get rate-limited: spend what's left on stepping-stone and network companies.
 - Nothing qualifies: update the ledger and dashboard anyway and call it a quiet day. Keep the threshold where the user set it.
 ````
@@ -455,18 +475,21 @@ Dashboard: {DASHBOARD_URL}
 """Embed the Job Bot ledger, feedback, and applications in dashboard.html.
 
 Lives at Job Bot/dashboard/bake.py. Reads:
-  briefs/all_jobs.jsonl            every posting the daily run examined
+  briefs/all_jobs.jsonl            every posting the daily runs examined
   briefs/feedback.json             Applied / Save / Skip marks, keyed by job URL
   applications/applications.jsonl  submitted applications and their status
   config/preferences.md            score floor and star threshold
 
 Writes the result into the <script id="baked-data"> block of dashboard/dashboard.html.
-Safe to re-run; each run replaces the previous block. Exits non-zero if the
-dashboard has no data block, so a broken template fails loudly instead of
-publishing stale data.
+Safe to re-run; each run replaces the previous block.
+
+The page carries the last 31 days in detail, every older role that has a mark, and
+lifetime totals, so it stays about the same size all semester. Exits non-zero when
+dashboard.html is incomplete, so a broken page never gets published with fresh data.
 """
 import datetime
 import json
+import math
 import os
 import pathlib
 import re
@@ -480,21 +503,49 @@ APPLICATIONS = ROOT / 'applications' / 'applications.jsonl'
 PREFERENCES = ROOT / 'config' / 'preferences.md'
 
 DEFAULT_FLOOR, DEFAULT_STAR = 75, 85
+WINDOW_DAYS = 31                       # covers the dashboard's 30-day views
+SURFACED = {'qualified', 'stepping-stone'}
+END_MARKER = '<!-- job-bot:end -->'
 BLOCK = re.compile(r'(<script id="baked-data" type="application/json">)(.*?)(</script>)', re.DOTALL)
 
 
-def load_jsonl(path):
-    rows = []
+def warn(message):
+    print(f'warning: {message}', file=sys.stderr)
+
+
+def finite_or_none(text):
+    value = float(text)
+    return value if math.isfinite(value) else None
+
+
+# NaN, Infinity, and overflowing numbers become null; browsers reject them in JSON.
+DECODER = json.JSONDecoder(parse_constant=lambda _: None, parse_float=finite_or_none)
+
+
+def load_records(path):
+    """Read JSON objects one after another. Tolerates pretty-printed rows and skips junk."""
     if not path.exists():
-        return rows
-    for n, line in enumerate(path.read_text(encoding='utf-8').splitlines(), 1):
-        line = line.strip()
-        if not line:
-            continue
+        return []
+    text = path.read_text(encoding='utf-8-sig')
+    rows, i, end = [], 0, len(text)
+    while i < end:
+        while i < end and text[i].isspace():
+            i += 1
+        if i >= end:
+            break
         try:
-            rows.append(json.loads(line))
+            obj, i = DECODER.raw_decode(text, i)
         except json.JSONDecodeError as e:
-            print(f'warning: skipped bad line {n} in {path.name}: {e}', file=sys.stderr)
+            warn(f'skipped unreadable text at line {text.count(chr(10), 0, i) + 1} of {path.name}: {e.msg}')
+            newline = text.find('\n', i)
+            if newline == -1:
+                break
+            i = newline + 1
+            continue
+        if isinstance(obj, dict):
+            rows.append(obj)
+        else:
+            warn(f'skipped a non-object entry in {path.name}')
     return rows
 
 
@@ -502,52 +553,97 @@ def load_feedback(path):
     if not path.exists():
         return {}
     try:
-        data = json.loads(path.read_text(encoding='utf-8') or '{}')
+        data = DECODER.decode(path.read_text(encoding='utf-8-sig').strip() or '{}')
     except json.JSONDecodeError as e:
-        print(f'warning: {path.name} is not valid JSON, baking without feedback: {e}', file=sys.stderr)
+        warn(f'{path.name} is not valid JSON, baking without feedback: {e}')
         return {}
-    return data if isinstance(data, dict) else {}
+    if not isinstance(data, dict):
+        return {}
+    return {url: mark for url, mark in data.items() if isinstance(mark, dict)}
 
 
 def read_threshold(text, label, default):
-    # Matches "Surface threshold: 75" and "**Surface threshold:** 75"
-    m = re.search(label + r':\**\s*(\d{2,3})', text, re.IGNORECASE)
+    # Matches "Surface threshold: 75", "**Surface threshold:** 75", "Surface threshold: **75**"
+    m = re.search(re.escape(label) + r'\W{0,6}(\d{2,3})\b', text, re.IGNORECASE)
     return int(m.group(1)) if m else default
 
 
+def day(row):
+    return str(row.get('scored_date') or '')[:10]
+
+
+def text_field(row, key):
+    value = row.get(key)
+    return value if isinstance(value, str) and value else None
+
+
+def latest_per_day(jobs):
+    """A posting re-scored on the same day keeps only its last row."""
+    last = {}
+    for n, j in enumerate(jobs):
+        if text_field(j, 'url'):
+            last[(j['url'], day(j))] = n
+    return [j for n, j in enumerate(jobs) if not text_field(j, 'url') or last[(j['url'], day(j))] == n]
+
+
 def main():
-    prefs = PREFERENCES.read_text(encoding='utf-8') if PREFERENCES.exists() else ''
-    jobs = load_jsonl(LEDGER)
-    applications = load_jsonl(APPLICATIONS)
+    prefs = PREFERENCES.read_text(encoding='utf-8-sig') if PREFERENCES.exists() else ''
+    jobs = latest_per_day(load_records(LEDGER))
+    applications = load_records(APPLICATIONS)
     feedback = load_feedback(FEEDBACK)
 
+    cutoff = (datetime.date.today() - datetime.timedelta(days=WINDOW_DAYS)).isoformat()
+    kept = []
+    for j in jobs:
+        surfaced = text_field(j, 'outcome') in SURFACED
+        if day(j) >= cutoff:
+            # Dropped rows only feed the daily counts, so they travel as date and outcome.
+            kept.append(j if surfaced else {'scored_date': j.get('scored_date'), 'outcome': text_field(j, 'outcome')})
+        elif surfaced and text_field(j, 'url') in feedback:
+            kept.append(j)  # older roles the user marked stay visible in the activity log
+
+    days = sorted({day(j) for j in jobs if day(j)})
     baked = {
         'generated_at': datetime.datetime.now().astimezone().isoformat(timespec='seconds'),
         'floor': read_threshold(prefs, 'Surface threshold', DEFAULT_FLOOR),
         'star': read_threshold(prefs, 'Star threshold', DEFAULT_STAR),
-        'jobs': jobs,
+        'lifetime': {
+            'scanned': len(jobs),
+            'qualified': len({text_field(j, 'url') for j in jobs if text_field(j, 'outcome') == 'qualified'} - {None}),
+            'first_date': days[0] if days else None,
+        },
+        'jobs': kept,
         'applications': applications,
         'feedback': feedback,
     }
 
-    # Escape <, >, & so scraped text can never close the script tag early.
-    payload = (json.dumps(baked, ensure_ascii=False)
+    # ASCII-only JSON, with <, >, & escaped, can't close the script tag or trip on odd characters.
+    payload = (json.dumps(baked, ensure_ascii=True)
                .replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026'))
 
-    html = HTML.read_text(encoding='utf-8')
+    html = HTML.read_text(encoding='utf-8-sig')
+    if not html.rstrip().endswith(END_MARKER):
+        sys.exit(f'error: {HTML} is incomplete (it should end with {END_MARKER}). '
+                 'Restore it from Appendix G of the Job Bot setup prompt.')
     if not BLOCK.search(html):
         sys.exit(f'error: {HTML} has no <script id="baked-data" type="application/json"> block. '
-                 'Restore dashboard.html from the Job Bot setup prompt.')
+                 'Restore it from Appendix G of the Job Bot setup prompt.')
     # A function replacement keeps re.sub from reading backslashes in the JSON as escapes.
     html = BLOCK.sub(lambda m: m.group(1) + payload + m.group(3), html, count=1)
 
     # Write to a temp file, then swap it in, so an interrupted bake never leaves a half-written page.
     tmp = HTML.with_name(HTML.name + '.tmp')
-    tmp.write_text(html, encoding='utf-8')
-    os.replace(tmp, HTML)
+    try:
+        with open(tmp, 'w', encoding='utf-8', newline='') as f:
+            f.write(html)
+        os.replace(tmp, HTML)
+    finally:
+        if tmp.exists():
+            tmp.unlink()
 
-    print(f'baked {len(jobs)} jobs, {len(applications)} applications, {len(feedback)} feedback marks '
-          f'(floor {baked["floor"]}, star {baked["star"]}) into {HTML.name}')
+    print(f'baked {len(kept)} of {len(jobs)} ledger rows, {len(applications)} applications, '
+          f'{len(feedback)} marks (floor {baked["floor"]}, star {baked["star"]}); '
+          f'{HTML.name} is {len(html) // 1024} KB')
 
 
 if __name__ == '__main__':
@@ -739,8 +835,8 @@ if __name__ == '__main__':
 
   <div id="empty-state" hidden>
     <div class="empty panel">
-      <h2>No runs yet</h2>
-      <p>Your first run fills this in. Runs fire on the schedule you picked while the Claude desktop app is open.</p>
+      <h2 id="empty-title">No runs yet</h2>
+      <p id="empty-text">Your first run fills this in. Runs fire on the schedule you picked while the Claude desktop app is open.</p>
       <div class="rules" id="rules-box"></div>
     </div>
   </div>
@@ -822,6 +918,7 @@ if __name__ == '__main__':
 
 const LOCAL_KEY = 'jobbot_feedback_v2';
 const MARKS = { applied: 'Applied', saved: 'Save', skipped: 'Skip' };
+const SURFACED = ['qualified', 'stepping-stone'];
 const APP_STATUS = {
   submitted:    { label: 'Submitted',    chip: 'chip-navy',   bucket: 'active' },
   acknowledged: { label: 'Acknowledged', chip: 'chip-navy',   bucket: 'active' },
@@ -836,14 +933,19 @@ const APP_STATUS = {
   withdrew:     { label: 'Withdrew',     chip: 'chip-grey',   bucket: 'lost'   },
 };
 const IN_PROGRESS = ['screening', 'assessment', 'interview', 'interviewing', 'phone-screen', 'onsite', 'final-round', 'reference-check'];
+const LOCAL_ONLY = 'Marks save in this browser only. Tell Claude "mark <company> applied" to record one for the next run.';
 
 const state = {
-  jobs: [], applications: [], feedback: {}, floor: 75, star: 85, generatedAt: null,
+  jobs: [], applications: [], feedback: {}, floor: 75, star: 85, lifetime: null, generatedAt: null,
   tab: 'applied', appsFilter: 'active',
 };
-let localMarks = readLocal();   // marks made in this browser, kept as a fallback
-let db = null;                  // the artifact's database, when this view has one
-const writeChains = {};         // one write at a time per job
+const localMarks = readLocal();   // marks made in this browser; uploaded once the database answers
+let db = null;                    // the artifact's database, when this view has one
+let dbState = 'connecting';       // connecting | live | local
+let lastWriteError = null;
+const unsynced = new Set();       // job URLs whose latest mark hasn't reached the database
+const writeChains = {};           // one write at a time per job
+const failedPanels = new Set();
 
 // ---------- helpers ----------
 function esc(s) {
@@ -854,10 +956,12 @@ function safeUrl(u) {
   try { const x = new URL(String(u)); return (x.protocol === 'https:' || x.protocol === 'http:') ? x.href : ''; }
   catch { return ''; }
 }
+function isObj(x) { return x !== null && typeof x === 'object' && !Array.isArray(x); }
+function isSurfaced(j) { return SURFACED.includes(j.outcome); }
 function localDay(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
-function dayOf(s) { return String(s || '').slice(0, 10); }
+function dayOf(s) { return String(s ?? '').slice(0, 10); }
 function parseDay(s) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dayOf(s));
   return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
@@ -868,11 +972,28 @@ function daysAgo(s) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   return Math.round((today - d) / 86400000);
 }
-function lastNDays(n) { return state.jobs.filter(j => daysAgo(j.scored_date) <= n); }
+function lastNDays(n) { return state.jobs.filter(j => daysAgo(j.scored_date) < n); } // n days including today
 function statusOf(url) { return (state.feedback[url] || {}).status || null; }
+function markTime(m) { return Date.parse(m && m.timestamp) || 0; }
 function pct(a, b) { return b ? `${Math.round(100 * a / b)}%` : '—'; }
 function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 function plural(n, word) { return `${n} ${word}${n === 1 ? '' : 's'}`; }
+function byScore(rows) { return rows.slice().sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0)); }
+// One row per posting (the newest), so a role seen on several days counts once.
+function uniqueJobs(rows) {
+  const best = new Map();
+  rows.forEach(j => {
+    if (typeof j.url !== 'string' || !j.url) return;
+    const cur = best.get(j.url);
+    if (!cur || dayOf(j.scored_date) >= dayOf(cur.scored_date)) best.set(j.url, j);
+  });
+  return [...best.values()];
+}
+function skillsOf(j) {
+  const s = j.skills_mentioned;
+  const list = Array.isArray(s) ? s : typeof s === 'string' ? s.split(',') : [];
+  return list.map(x => String(x).trim()).filter(Boolean);
+}
 function table(head, rows) {
   return `<div class="table-scroll"><table><thead><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
 }
@@ -893,56 +1014,86 @@ function markId(url) {
 
 // ---------- feedback (Applied / Save / Skip) ----------
 function readLocal() {
-  try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || '{}') || {}; } catch { return {}; }
+  try { const v = JSON.parse(localStorage.getItem(LOCAL_KEY) || '{}'); return isObj(v) ? v : {}; } catch { return {}; }
 }
 function writeLocal() {
   try { localStorage.setItem(LOCAL_KEY, JSON.stringify(localMarks)); } catch { /* storage blocked; marks still live in memory */ }
 }
-// Each source maps job URL -> {status, timestamp}. The newest timestamp wins; status null clears a mark.
+// Each source maps job URL -> {status, timestamp, day}. The newest timestamp wins; status null clears a mark.
 function mergeMarks(source) {
   for (const [url, mark] of Object.entries(source || {})) {
-    if (!mark || typeof mark !== 'object') continue;
+    if (!isObj(mark)) continue;
     const cur = state.feedback[url];
-    if (!cur || (Date.parse(mark.timestamp) || 0) >= (Date.parse(cur.timestamp) || 0)) state.feedback[url] = mark;
+    if (!cur || markTime(mark) >= markTime(cur)) state.feedback[url] = mark;
   }
 }
-function setSyncNote(text) { document.getElementById('sync-note').textContent = text; }
+
+function updateSyncNote() {
+  let text = '';
+  if (dbState === 'local') text = LOCAL_ONLY;
+  else if (dbState === 'live') {
+    if (lastWriteError === 'quota_exceeded') text = 'Dashboard storage is full, so new marks save in this browser only.';
+    else if (lastWriteError && unsynced.size) text = `${plural(unsynced.size, 'mark')} saved in this browser but not synced yet. Open the dashboard here again to sync.`;
+    else text = 'Your marks sync to the next run.';
+  }
+  document.getElementById('sync-note').textContent = text;
+}
+
+// Write one mark as given (never toggles), retrying once when the database is briefly unavailable.
+function pushMark(url, mark) {
+  const ref = db.collection('feedback').doc(markId(url));
+  const body = { url, status: mark.status ?? null, timestamp: mark.timestamp, day: mark.day || null };
+  const write = () => ref.set(body);
+  unsynced.add(url);
+  writeChains[url] = (writeChains[url] || Promise.resolve())
+    .then(write)
+    .catch(e => {
+      if (e && e.code === 'unavailable') return new Promise(r => setTimeout(r, 400 + Math.random() * 1200)).then(write);
+      throw e;
+    })
+    .then(() => { unsynced.delete(url); if (!unsynced.size) lastWriteError = null; updateSyncNote(); },
+          e => { lastWriteError = (e && e.code) || 'unavailable'; updateSyncNote(); });
+}
 
 function setStatus(url, status) {
   const next = statusOf(url) === status ? null : status; // clicking the active mark clears it
-  const mark = { status: next, timestamp: new Date().toISOString() };
+  const mark = { status: next, timestamp: new Date().toISOString(), day: localDay() };
   state.feedback[url] = mark;
   localMarks[url] = mark;
   writeLocal();
   renderAll();
-  if (!db) return;
-  const ref = db.collection('feedback').doc(markId(url));
-  writeChains[url] = (writeChains[url] || Promise.resolve())
-    .then(() => ref.set({ url, status: mark.status, timestamp: mark.timestamp }))
-    .catch(e => {
-      setSyncNote(e && e.code === 'quota_exceeded'
-        ? 'Dashboard storage is full, so new marks save in this browser only.'
-        : 'That mark saved in this browser but did not reach the dashboard database. Click it again to retry.');
-    });
+  if (db) pushMark(url, mark);
 }
 
-const LOCAL_ONLY = 'Marks save in this browser only. Tell Claude "mark <company> applied" to record one for the next run.';
 async function connectDb() {
-  if (!window.claude || typeof window.claude.use !== 'function') { setSyncNote(LOCAL_ONLY); return; }
-  try { db = await window.claude.use('db'); } catch { db = null; }
-  if (!db) { setSyncNote(LOCAL_ONLY); return; }
+  let handle = null;
+  if (window.claude && typeof window.claude.use === 'function') {
+    try { handle = await window.claude.use('db'); } catch { handle = null; }
+  }
+  if (!handle) { dbState = 'local'; updateSyncNote(); return; }
+  db = handle;
+  dbState = 'live';
+  updateSyncNote();
+  let reconciled = false;
   db.collection('feedback').onSnapshot(snap => {
     const remote = {};
     snap.docs.forEach(d => {
       const v = d.data();
-      if (v && typeof v.url === 'string') remote[v.url] = { status: v.status ?? null, timestamp: v.timestamp || null };
+      if (v && typeof v.url === 'string') remote[v.url] = { status: v.status ?? null, timestamp: v.timestamp || null, day: v.day || null };
     });
     mergeMarks(remote);
-    setSyncNote('Your marks sync to the next run.');
+    // Once the database gives a definitive answer, upload marks this browser holds that it hasn't seen.
+    if (!reconciled && !(snap.metadata && snap.metadata.fromCache)) {
+      reconciled = true;
+      for (const [url, mark] of Object.entries(localMarks)) {
+        if (state.feedback[url] === mark && markTime(mark) > markTime(remote[url])) pushMark(url, mark);
+      }
+    }
     renderAll();
   }, () => {
     db = null;
-    setSyncNote(LOCAL_ONLY);
+    dbState = 'local';
+    updateSyncNote();
   });
 }
 
@@ -954,7 +1105,7 @@ function markButtons(url) {
   ).join('');
 }
 function scoreChip(j) {
-  return `<span class="chip ${(j.score || 0) >= state.star ? 'chip-green' : 'chip-yellow'}">${esc(j.score ?? '–')}</span>`;
+  return `<span class="chip ${(Number(j.score) || 0) >= state.star ? 'chip-green' : 'chip-yellow'}">${esc(j.score ?? '–')}</span>`;
 }
 function jdLink(j, text) {
   const href = safeUrl(j.url);
@@ -970,51 +1121,68 @@ function materials(j) {
 }
 
 // ---------- render ----------
+// A panel that hits malformed data reports itself and leaves the others drawn.
+function safely(name, fn) {
+  try { fn(); }
+  catch (e) {
+    console.error(`Job Bot: ${name} failed`, e);
+    failedPanels.add(name);
+    const err = document.getElementById('err-state');
+    err.hidden = false;
+    err.textContent = `Part of the dashboard didn't load (${[...failedPanels].join(', ')}). Ask Claude to check the Job Bot ledger for a malformed row.`;
+  }
+}
+
 function renderAll() {
   if (!state.jobs.length) {
     document.getElementById('empty-state').hidden = false;
     document.getElementById('data-state').hidden = true;
+    if (state.lifetime && state.lifetime.scanned) {
+      document.getElementById('empty-title').textContent = 'No recent runs';
+      document.getElementById('empty-text').textContent = 'Nothing in the last 31 days. Check Scheduled in the Claude sidebar for missed or paused runs.';
+    }
     document.getElementById('rules-box').innerHTML = `<strong>Search rules in effect</strong><br>
       Source: company career sites only, no job aggregators<br>
       Freshness: posted within 7 days, with a verified date<br>
-      Output: up to 3 matches a day, never padded<br>
-      Match floor: ${esc(state.floor)}, star at ${esc(state.star)}`;
+      Output: up to 3 matches a day plus up to 2 stepping stones, never padded<br>
+      Match floor: ${esc(state.floor)}, strong fit at ${esc(state.star)}`;
     return;
   }
   document.getElementById('empty-state').hidden = true;
   document.getElementById('data-state').hidden = false;
-  renderKpis();
-  renderToday();
-  renderRunHistory();
-  renderCharts();
-  renderApplications();
-  renderPipeline();
-  renderLog();
+  safely('summary numbers', renderKpis);
+  safely("today's brief", renderToday);
+  safely('run history', renderRunHistory);
+  safely('charts', renderCharts);
+  safely('applications', renderApplications);
+  safely('pipeline', renderPipeline);
+  safely('activity log', renderLog);
   markTabs();
 }
 
 function renderKpis() {
   const last30 = lastNDays(30);
-  const q30 = last30.filter(j => j.outcome === 'qualified');
-  const applied = q30.filter(j => statusOf(j.url) === 'applied').length;
-  const skipped = q30.filter(j => statusOf(j.url) === 'skipped').length;
-  const saved = q30.filter(j => statusOf(j.url) === 'saved').length;
+  const q30 = uniqueJobs(last30.filter(j => j.outcome === 'qualified'));
+  const count = s => q30.filter(j => statusOf(j.url) === s).length;
   document.getElementById('kpi-scanned').textContent = last30.length;
   document.getElementById('kpi-scanned-sub').textContent = `${lastNDays(7).length} in the last 7 days`;
   document.getElementById('kpi-qualified-label').textContent = `Qualified ${state.floor}+ (30d)`;
   document.getElementById('kpi-qualified').textContent = q30.length;
   document.getElementById('kpi-qualified-sub').textContent = `${pct(q30.length, last30.length)} pass rate`;
-  document.getElementById('kpi-applied').textContent = applied;
-  document.getElementById('kpi-applied-sub').textContent = `${skipped} skipped · ${saved} saved`;
-  document.getElementById('kpi-rate').textContent = pct(applied, q30.length);
+  document.getElementById('kpi-applied').textContent = count('applied');
+  document.getElementById('kpi-applied-sub').textContent = `${count('skipped')} skipped · ${count('saved')} saved`;
+  document.getElementById('kpi-rate').textContent = pct(count('applied'), q30.length);
 
-  const all = state.jobs;
-  const allQ = all.filter(j => j.outcome === 'qualified');
-  const allApplied = allQ.filter(j => statusOf(j.url) === 'applied').length;
-  const first = all.map(j => dayOf(j.scored_date)).filter(Boolean).sort()[0];
-  const days = first ? Math.max(1, daysAgo(first) + 1) : 1;
+  const lt = state.lifetime || {
+    scanned: state.jobs.length,
+    qualified: uniqueJobs(state.jobs.filter(j => j.outcome === 'qualified')).length,
+    first_date: state.jobs.map(j => dayOf(j.scored_date)).filter(Boolean).sort()[0],
+  };
+  const applied = Object.values(state.feedback).filter(m => isObj(m) && m.status === 'applied').length;
+  const age = daysAgo(lt.first_date);
+  const days = age === Infinity ? 1 : Math.max(1, age + 1);
   document.getElementById('lifetime-line').innerHTML =
-    `Lifetime · <strong>${all.length}</strong> scanned · <strong>${allQ.length}</strong> qualified · <strong>${allApplied}</strong> applied · across ${plural(days, 'day')}`;
+    `Lifetime · <strong>${esc(lt.scanned)}</strong> scanned · <strong>${esc(lt.qualified)}</strong> qualified · <strong>${applied}</strong> applied · across ${plural(days, 'day')}`;
 }
 
 function renderToday() {
@@ -1025,10 +1193,10 @@ function renderToday() {
   if (latest && latest !== localDay()) dateEl.textContent += ` (last run ${latest})`;
 
   const runJobs = state.jobs.filter(j => dayOf(j.scored_date) === latest);
-  const qualified = runJobs.filter(j => j.outcome === 'qualified').sort((a, b) => (b.score || 0) - (a.score || 0));
-  const stepping = runJobs.filter(j => j.outcome === 'stepping-stone').sort((a, b) => (b.score || 0) - (a.score || 0));
+  const qualified = byScore(runJobs.filter(j => j.outcome === 'qualified'));
+  const stepping = byScore(runJobs.filter(j => j.outcome === 'stepping-stone'));
   const shown = [...qualified.slice(0, 3), ...stepping.slice(0, 2)];
-  const applied = runJobs.filter(j => statusOf(j.url) === 'applied').length;
+  const applied = [...qualified, ...stepping].filter(j => statusOf(j.url) === 'applied').length;
 
   document.getElementById('today-counts').innerHTML = `
     <div class="tc"><span class="n">${runJobs.length}</span><span class="lbl">Scanned</span></div>
@@ -1047,7 +1215,7 @@ function renderToday() {
     const isStep = j.outcome === 'stepping-stone';
     const href = safeUrl(j.url);
     return `<article class="today-card${i === 0 && !isStep ? ' top' : ''}">
-      <div class="today-score ${(j.score || 0) >= state.star ? 'green' : 'yellow'}">${esc(j.score ?? '–')}</div>
+      <div class="today-score ${(Number(j.score) || 0) >= state.star ? 'green' : 'yellow'}">${esc(j.score ?? '–')}</div>
       <div style="min-width:0">
         <div><strong>${esc(j.company)}</strong> · ${esc(j.title || '')}
           ${isStep ? '<span class="chip chip-yellow">Stepping stone</span>' : ''}
@@ -1065,20 +1233,22 @@ function renderToday() {
 }
 
 function renderRunHistory() {
+  const wrap = document.getElementById('run-history');
+  const open = new Set([...wrap.querySelectorAll('details[open]')].map(d => d.dataset.date)); // keep expanded days open
   const byDate = {};
   state.jobs.forEach(j => { const d = dayOf(j.scored_date); if (d) (byDate[d] = byDate[d] || []).push(j); });
   const dates = Object.keys(byDate).sort().reverse().slice(0, 30);
-  document.getElementById('run-history').innerHTML = dates.map(d => {
+  wrap.innerHTML = dates.map(d => {
     const jobs = byDate[d];
-    const qualified = jobs.filter(j => j.outcome === 'qualified').sort((a, b) => (b.score || 0) - (a.score || 0));
-    const stepping = jobs.filter(j => j.outcome === 'stepping-stone').sort((a, b) => (b.score || 0) - (a.score || 0));
+    const qualified = byScore(jobs.filter(j => j.outcome === 'qualified'));
+    const stepping = byScore(jobs.filter(j => j.outcome === 'stepping-stone'));
     const surfaced = [...qualified, ...stepping];
-    const applied = jobs.filter(j => statusOf(j.url) === 'applied').length;
+    const applied = surfaced.filter(j => statusOf(j.url) === 'applied').length;
     const top = qualified[0] || stepping[0];
     const date = parseDay(d);
-    const stale = jobs.filter(j => j.outcome === 'stale').length;
-    const offFit = jobs.filter(j => ['off-fit', 'dealbreaker'].includes(j.outcome)).length;
-    const other = jobs.length - surfaced.length - stale - offFit;
+    const count = o => jobs.filter(j => j.outcome === o).length;
+    const stale = count('stale'), offFit = count('off-fit') + count('dealbreaker'), below = count('below-floor'), repeats = count('dedup');
+    const other = jobs.length - surfaced.length - stale - offFit - below - repeats;
     const rows = surfaced.map(j => {
       const s = statusOf(j.url);
       const statusChip = s ? `<span class="chip ${s === 'applied' ? 'chip-green' : s === 'saved' ? 'chip-yellow' : 'chip-grey'}">${esc(s)}</span>`
@@ -1091,7 +1261,7 @@ function renderRunHistory() {
         <td style="min-width:220px">${esc(j.why_fits || '')}</td>
         <td>${statusChip}</td></tr>`;
     }).join('');
-    return `<details class="run-row">
+    return `<details class="run-row" data-date="${esc(d)}"${open.has(d) ? ' open' : ''}>
       <summary class="run-summary">
         <div class="run-date">${date ? date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : esc(d)}<span class="weekday">${date ? date.toLocaleDateString(undefined, { weekday: 'short' }) : ''}</span></div>
         <div class="run-stat scanned"><strong>${jobs.length}</strong><span class="lbl">Scanned</span></div>
@@ -1102,7 +1272,7 @@ function renderRunHistory() {
       </summary>
       <div class="run-detail">
         ${surfaced.length ? table(['Score', 'Company / role', 'Location', 'Posted', 'Why it fits', 'Status'], rows) : ''}
-        <div class="drops">Dropped: ${stale} stale · ${offFit} off-fit or dealbreaker · ${other} repeat or under the floor</div>
+        <div class="drops">Dropped: ${stale} stale · ${offFit} off-fit or dealbreaker · ${below} under the floor · ${repeats} repeats${other > 0 ? ` · ${other} other` : ''}</div>
       </div>
     </details>`;
   }).join('');
@@ -1118,7 +1288,7 @@ function renderCharts() {
     });
     return;
   }
-  const c = { ink: cssVar('--ink'), muted: cssVar('--muted'), line: cssVar('--line'), navy: cssVar('--navy'), yellow: cssVar('--yellow'), green: cssVar('--green') };
+  const c = { muted: cssVar('--muted'), line: cssVar('--line'), navy: cssVar('--navy'), yellow: cssVar('--yellow'), green: cssVar('--green') };
   Chart.defaults.color = c.muted;
   Chart.defaults.borderColor = c.line;
   Chart.defaults.font.family = cssVar('--font');
@@ -1127,7 +1297,7 @@ function renderCharts() {
   for (let i = 29; i >= 0; i--) { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - i); days.push(localDay(d)); }
   const perDay = days.map(day => {
     const js = state.jobs.filter(j => dayOf(j.scored_date) === day);
-    return [js.length, js.filter(j => j.outcome === 'qualified').length, js.filter(j => statusOf(j.url) === 'applied').length];
+    return [js.length, js.filter(j => j.outcome === 'qualified').length, js.filter(j => isSurfaced(j) && statusOf(j.url) === 'applied').length];
   });
   const line = (label, i, color) => ({ label, data: perDay.map(p => p[i]), borderColor: color, backgroundColor: color, borderWidth: 2, tension: 0.3, pointRadius: 0 });
   draw('chart-volume', {
@@ -1137,8 +1307,8 @@ function renderCharts() {
       scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { ticks: { maxRotation: 0, autoSkip: true } } } },
   });
 
-  const recentQ = lastNDays(30).filter(j => j.outcome === 'qualified');
-  const tally = (pairs) => Object.entries(pairs.reduce((acc, k) => (acc[k] = (acc[k] || 0) + 1, acc), {})).sort((a, b) => b[1] - a[1]);
+  const recentQ = uniqueJobs(lastNDays(30).filter(j => j.outcome === 'qualified'));
+  const tally = keys => Object.entries(keys.reduce((acc, k) => (acc[k] = (acc[k] || 0) + 1, acc), {})).sort((a, b) => b[1] - a[1]);
   const bars = (entries, color) => ({
     type: 'bar',
     data: { labels: entries.map(e => e[0]), datasets: [{ data: entries.map(e => e[1]), backgroundColor: color }] },
@@ -1146,7 +1316,7 @@ function renderCharts() {
       scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } },
   });
   draw('chart-geo', bars(tally(recentQ.map(j => String(j.location_type || j.location || 'Unknown'))).slice(0, 8), c.navy));
-  draw('chart-skills', bars(tally(recentQ.flatMap(j => (j.skills_mentioned || []).map(s => String(s).trim()).filter(Boolean))).slice(0, 10), c.yellow));
+  draw('chart-skills', bars(tally(recentQ.flatMap(skillsOf)).slice(0, 10), c.yellow));
 }
 function draw(id, config) {
   if (charts[id]) charts[id].destroy();
@@ -1182,10 +1352,11 @@ function renderApplications() {
   wrap.innerHTML = table(['Company / role', 'Applied', 'Status', 'Last email', 'Score', 'Links'], shown.map(a => {
     const meta = APP_STATUS[a.application_status] || { label: a.application_status || 'unknown', chip: 'chip-grey' };
     const age = daysAgo(a.applied_at);
+    const ageText = age === Infinity ? '' : age <= 0 ? 'today' : `${plural(age, 'day')} ago`;
     const thread = a.last_email_thread_id ? ` · <a href="https://mail.google.com/mail/u/0/#all/${encodeURIComponent(a.last_email_thread_id)}" target="_blank" rel="noopener noreferrer">open thread</a>` : '';
     return `<tr>
       <td><strong>${esc(a.company)}</strong><div class="sub">${esc(a.title || '')}</div></td>
-      <td>${esc(dayOf(a.applied_at) || '—')}<div class="sub">${age === Infinity ? '' : age === 0 ? 'today' : plural(age, 'day') + ' ago'}</div></td>
+      <td>${esc(dayOf(a.applied_at) || '—')}<div class="sub">${ageText}</div></td>
       <td><span class="chip ${meta.chip}">${esc(meta.label)}</span></td>
       <td>${a.last_email_subject ? `<div class="truncate" title="${esc(a.last_email_subject)}">${esc(a.last_email_subject)}</div><div class="sub">${esc(a.last_email_at || '')}</div>` : '<span class="sub">—</span>'}${thread}</td>
       <td class="score">${esc(a.score_at_apply ?? '—')}</td>
@@ -1195,9 +1366,8 @@ function renderApplications() {
 }
 
 function renderPipeline() {
-  const pipeline = state.jobs
-    .filter(j => j.outcome === 'qualified' && !['applied', 'skipped'].includes(statusOf(j.url)))
-    .sort((a, b) => (b.score || 0) - (a.score || 0));
+  const pipeline = byScore(uniqueJobs(state.jobs.filter(j => j.outcome === 'qualified'))
+    .filter(j => !['applied', 'skipped'].includes(statusOf(j.url))));
   const wrap = document.getElementById('pipeline-table-wrap');
   if (!pipeline.length) { wrap.innerHTML = '<p class="sub" style="padding:10px">No undecided jobs.</p>'; return; }
   wrap.innerHTML = table(['Score', 'Company / role', 'Location', 'Posted', 'Materials', 'Decision'], pipeline.map(j => `<tr>
@@ -1211,15 +1381,16 @@ function renderPipeline() {
 }
 
 function renderLog() {
-  const items = state.jobs
+  const items = uniqueJobs(state.jobs.filter(isSurfaced))
     .filter(j => statusOf(j.url) === state.tab)
-    .sort((a, b) => (Date.parse(state.feedback[b.url].timestamp) || 0) - (Date.parse(state.feedback[a.url].timestamp) || 0));
+    .sort((a, b) => markTime(state.feedback[b.url]) - markTime(state.feedback[a.url]));
   const wrap = document.getElementById('log-table-wrap');
   if (!items.length) { wrap.innerHTML = `<p class="sub" style="padding:10px">Nothing marked ${esc(MARKS[state.tab] || state.tab)} yet.</p>`; return; }
   wrap.innerHTML = table(['When', 'Company / role', 'Location', 'Score', 'Posting', ''], items.map(j => {
-    const ts = Date.parse(state.feedback[j.url].timestamp);
+    const mark = state.feedback[j.url];
+    const when = mark.day || (markTime(mark) ? localDay(new Date(markTime(mark))) : '—');
     return `<tr>
-      <td>${ts ? new Date(ts).toLocaleDateString() : '—'}</td>
+      <td>${esc(when)}</td>
       <td><strong>${esc(j.company)}</strong><div class="truncate">${esc(j.title || '')}</div></td>
       <td>${esc(j.location || '—')}</td>
       <td class="score">${esc(j.score ?? '—')}</td>
@@ -1252,14 +1423,14 @@ document.addEventListener('click', e => {
   const mark = e.target.closest('[data-mark]');
   if (mark) { setStatus(mark.dataset.url, mark.dataset.mark); return; }
   const tab = e.target.closest('[data-tab]');
-  if (tab) { state.tab = tab.dataset.tab; renderLog(); markTabs(); return; }
+  if (tab) { state.tab = tab.dataset.tab; safely('activity log', renderLog); markTabs(); return; }
   const filter = e.target.closest('[data-apps-filter]');
-  if (filter) { state.appsFilter = filter.dataset.appsFilter; renderApplications(); markTabs(); return; }
+  if (filter) { state.appsFilter = filter.dataset.appsFilter; safely('applications', renderApplications); markTabs(); return; }
   const copy = e.target.closest('[data-copy]');
   if (copy) copyText(copy.dataset.copy, copy);
 });
 // Redraw charts when the viewer's theme changes, so axis and bar colors follow it.
-const redrawCharts = () => { if (state.jobs.length) renderCharts(); };
+const redrawCharts = () => { if (state.jobs.length) safely('charts', renderCharts); };
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', redrawCharts);
 new MutationObserver(redrawCharts).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
@@ -1267,24 +1438,27 @@ new MutationObserver(redrawCharts).observe(document.documentElement, { attribute
 (function boot() {
   try {
     const baked = JSON.parse(document.getElementById('baked-data').textContent || '{}');
-    state.jobs = Array.isArray(baked.jobs) ? baked.jobs : [];
-    state.applications = Array.isArray(baked.applications) ? baked.applications : [];
+    state.jobs = (Array.isArray(baked.jobs) ? baked.jobs : []).filter(isObj);
+    state.applications = (Array.isArray(baked.applications) ? baked.applications : []).filter(isObj);
     state.floor = Number(baked.floor) || 75;
     state.star = Number(baked.star) || 85;
+    state.lifetime = isObj(baked.lifetime) ? baked.lifetime : null;
     state.generatedAt = baked.generated_at || null;
-    mergeMarks(baked.feedback);
+    if (isObj(baked.feedback)) mergeMarks(baked.feedback);
   } catch (e) {
     const err = document.getElementById('err-state');
     err.hidden = false;
     err.textContent = 'The dashboard data block is unreadable. Ask Claude to re-run bake.py and republish the dashboard.';
   }
   mergeMarks(localMarks);
+  const total = state.lifetime ? Number(state.lifetime.scanned) || 0 : state.jobs.length;
   const stamp = state.generatedAt ? new Date(state.generatedAt).toLocaleString() : 'not yet';
-  document.getElementById('status-text').textContent = `${plural(state.jobs.length, 'job')} in the ledger · updated ${stamp}`;
+  document.getElementById('status-text').textContent = `${plural(total, 'job')} in the ledger · updated ${stamp}`;
+  connectDb();   // start before drawing, so a drawing error can't keep marks from syncing
   renderAll();
-  connectDb();
 })();
 </script>
+<!-- job-bot:end -->
 ````
 <!-- /appendix -->
 
@@ -1415,6 +1589,6 @@ Runs use these projects for the Selected Projects section of each tailored resum
 
 ## When you're done
 
-Tell Claude: "Re-run my Job Bot now with the updated settings." The run re-scores against the new weights and contacts and refreshes the dashboard.
+Tell Claude: "Re-run my Job Bot now with the updated settings." The run re-scores the last week's open postings against the new weights and contacts, then refreshes the dashboard.
 ````
 <!-- /appendix -->

@@ -36,7 +36,7 @@ Open the dashboard. Each match shows its score, why it fits, and where its tailo
 | Skill overlap | 10 |
 | Network (named contact, alumni, referral) | 10 |
 
-You pick the floor at setup: 75 by default, 85 for strict, 65 for relaxed. Scores of 85 and up get a star. Two cases surface roles scoring 65 or more but under the floor: companies on your stepping-stone list, and companies where you have a named contact.
+You pick the floor at setup: 75 by default, 85 for strict, 65 for relaxed. Scores of 85 and up show green as strong fits. Two cases surface roles scoring 65 or more but under the floor: companies on your stepping-stone list, and companies where you have a named contact.
 
 ## What the bot holds to
 
@@ -44,7 +44,7 @@ You pick the floor at setup: 75 by default, 85 for strict, 65 for relaxed. Score
 - **Fresh postings.** Posted within 7 days, with a date it can verify.
 - **One full page.** Tailored resumes fit exactly one page and fill at least 93% of it. The run converts each one to PDF and measures.
 - **Your facts.** Tailoring reorders and rephrases your master resume. Every number, title, and credential comes from it.
-- **Three a day, at most.** A thin day stays thin.
+- **Three a day, at most,** plus up to two stepping-stone roles. A thin day stays thin.
 
 ## Tuning
 
@@ -55,7 +55,7 @@ Tell Claude what to change, or edit `Job Bot/config/preferences.md`. [`workbook_
 - **No run this morning.** The app was closed or the computer was asleep. Scheduled in the Claude sidebar shows run history and has Run now.
 - **Runs stop to ask for approval.** Run the task once from Scheduled and approve its tools, or turn on automatic approval in the task's settings.
 - **Hitting usage limits on Pro.** Switch the scheduled task to Claude Sonnet 5.5 or trim the company list toward 20.
-- **Dashboard marks don't reach the next run.** Your account doesn't offer artifact data storage yet, so marks stay in that browser. Tell Claude "mark Slalom applied" instead.
+- **The dashboard footer says marks save in this browser only.** The dashboard has no database in this view, so marks stay in that browser and the next run won't see them. Tell Claude "mark Slalom applied" instead. If the footer says some marks haven't synced, open the dashboard again in the same browser and they upload.
 
 ## What's in this repo
 
@@ -74,7 +74,7 @@ Tell Claude what to change, or edit `Job Bot/config/preferences.md`. [`workbook_
 
 ## Editing the templates
 
-`setup_prompt.md` embeds the other files, so edit the source file, then run `python build_setup_prompt.py`. `python build_setup_prompt.py --check` exits non-zero when the prompt is out of date.
+`setup_prompt.md` embeds the other files, so edit the source file, then run `python3 build_setup_prompt.py`. `python3 build_setup_prompt.py --check` exits non-zero when the prompt is out of date.
 
 ## License
 

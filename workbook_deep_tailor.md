@@ -121,4 +121,4 @@ Runs use these projects for the Selected Projects section of each tailored resum
 
 ## When you're done
 
-Tell Claude: "Re-run my Job Bot now with the updated settings." The run re-scores against the new weights and contacts and refreshes the dashboard.
+Tell Claude: "Re-run my Job Bot now with the updated settings." The run re-scores the last week's open postings against the new weights and contacts, then refreshes the dashboard.

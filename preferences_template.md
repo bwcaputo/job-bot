@@ -5,6 +5,7 @@ Every run reads this file. Edit it anytime, or tell Claude what to change.
 ## Candidate snapshot
 - {One line, e.g. "Full-time MBA, Class of 2027, five years in supply chain operations"}
 - Home base: {City, State}
+- Time zone: {e.g. America/Denver}
 - Contact line for cover letters: {email} | {phone} | {LinkedIn URL}
 
 ## Dashboard
